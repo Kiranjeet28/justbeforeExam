@@ -8,6 +8,7 @@ from database import Base, engine, get_db
 from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
 from services import AIService
+from services.ai_service import RateLimitExceeded
 from utils import extract_youtube_video_id
 
 
@@ -19,8 +20,8 @@ class ReportRequest(BaseModel):
 
 
 class CheatSheetRequest(BaseModel):
+    source_ids: list[int] = []
     topic: str = ""
-    notes: str = ""
 
 
 @asynccontextmanager
@@ -130,6 +131,120 @@ def generate_report(payload: ReportRequest, db: Session = Depends(get_db)) -> di
         )
 
 
+@app.post("/api/generate-notes")
+def generate_notes(db: Session = Depends(get_db)) -> dict[str, object]:
+    """
+    Generate comprehensive study notes from all saved sources using RAG.
+    Fetches all sources, uses RAG to generate formatted Markdown notes with citations.
+    """
+    try:
+        # Fetch all sources from database
+        sources = db.query(Source).all()
+
+        if not sources:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No sources found. Please add some sources first.",
+            )
+
+        # Convert sources to format expected by RAG
+        sources_data = [
+            {
+                "id": source.id,
+                "type": source.type,
+                "content": source.content,
+            }
+            for source in sources
+        ]
+
+        # Initialize AI service
+        ai_service = AIService()
+
+        # Generate study notes with RAG
+        result = ai_service.generate_notes_with_rag(sources_data)
+
+        return {
+            "success": True,
+            "notes": result["notes"],
+            "citations": result.get("citations", []),
+            "sources_count": result.get("sources_count", len(sources)),
+            "provider": result.get("provider", "unknown"),
+        }
+
+    except RateLimitExceeded as e:
+        # Return 429 with clear rate limit message
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(e),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI service error: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}",
+        )
+
+
+@app.post("/api/generate-notes-legacy")
+def generate_notes_legacy(db: Session = Depends(get_db)) -> dict[str, object]:
+    """
+    Legacy endpoint: Generate study notes without RAG (concatenation-based).
+    Kept for backward compatibility.
+    """
+    try:
+        # Fetch all sources from database
+        sources = db.query(Source).all()
+
+        if not sources:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No sources found. Please add some sources first.",
+            )
+
+        # Concatenate source content
+        sources_text = "\n\n---\n\n".join(
+            [f"[{source.type.upper()}] {source.content}" for source in sources]
+        )
+
+        # Initialize AI service
+        ai_service = AIService()
+
+        # Generate study notes (legacy method)
+        notes = ai_service.generate_study_notes(sources_text)
+
+        return {
+            "success": True,
+            "notes": notes,
+            "sources_count": len(sources),
+            "provider": ai_service.provider_name,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI service error: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}",
+        )
+
+
 @app.post("/api/reports", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
 def save_report(payload: ReportCreate, db: Session = Depends(get_db)) -> Report:
     """Save a generated report to the database."""
@@ -183,9 +298,80 @@ def delete_report(report_id: int, db: Session = Depends(get_db)) -> Response:
 
 
 @app.post("/api/generate-cheat-sheet")
-def generate_cheat_sheet(payload: CheatSheetRequest) -> dict[str, object]:
-    # Placeholder for modular AI provider service call
-    return {
-        "message": "Cheat sheet generator route is ready.",
-        "received": payload.model_dump(),
-    }
+def generate_cheat_sheet(payload: CheatSheetRequest, db: Session = Depends(get_db)) -> dict[str, object]:
+    """
+    Generate a cheat sheet/study notes from specified sources using Hugging Face RAG.
+    
+    Args:
+        payload: CheatSheetRequest with source_ids and optional topic
+        db: Database session
+    
+    Returns:
+        Dict with generated notes and sources_count
+    """
+    try:
+        # Validate input
+        if not payload.source_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please specify at least one source_id",
+            )
+        
+        # Fetch sources from database
+        sources = db.query(Source).filter(Source.id.in_(payload.source_ids)).all()
+        
+        if not sources:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No sources found with the provided IDs",
+            )
+        
+        # Extract text from sources
+        from services.ai_service import TextExtractor
+        
+        source_texts = []
+        for source in sources:
+            if source.type == "video" and source.video_id:
+                # Extract YouTube transcript
+                text = TextExtractor.extract_from_youtube(source.video_id)
+            elif source.type == "link":
+                # Extract from URL
+                text = TextExtractor.extract_from_url(source.content)
+            else:
+                # Use content directly for notes
+                text = source.content
+            
+            source_texts.append(text)
+        
+        # Generate notes using Hugging Face RAG
+        ai_service = AIService()
+        result = ai_service.generate_rag_notes(source_texts, topic=payload.topic)
+        
+        return {
+            "success": True,
+            "notes": result["notes"],
+            "sources_count": result["sources_count"],
+            "provider": result["provider"],
+            "topic": payload.topic,
+        }
+    
+    except RateLimitExceeded as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(e),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI service error: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}",
+        )

@@ -8,3 +8,7 @@ google-generativeai
 openai
 sqlalchemy
 cors
+tenacity
+requests
+youtube-transcript-api
+beautifulsoup4
