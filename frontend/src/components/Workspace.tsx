@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link as LinkIcon, NotebookText, Trash2, Video, Check, Loader2, Maximize2, Minimize2, Sparkles } from "lucide-react";
+import { NotebookText, Trash2, Video, Check, Loader2, Maximize2, Minimize2, Sparkles, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   createSource,
@@ -14,11 +14,17 @@ import {
   SourceType,
 } from "@/lib/api";
 import { NotesCanvas } from "./NotesCanvas";
+
 interface Citation {
   id: number;
   type: string;
   preview: string;
 }
+
+interface WorkspaceProps {
+  onSourcesChange?: (count: number) => void;
+}
+
 function detectSourceType(content: string): SourceType {
   const trimmed = content.trim();
   const lower = trimmed.toLowerCase();
@@ -42,15 +48,15 @@ function detectSourceType(content: string): SourceType {
 
 function typeIcon(type: SourceType) {
   if (type === "video") {
-    return <Video size={18} className="text-rose-300" />;
+    return <Video size={18} className="text-rose-400 shrink-0" />;
   }
   if (type === "link") {
-    return <LinkIcon size={18} className="text-cyan-300" />;
+    return <Globe size={18} className="text-cyan-400 shrink-0" />;
   }
-  return <NotebookText size={18} className="text-emerald-300" />;
+  return <NotebookText size={18} className="text-emerald-400 shrink-0" />;
 }
 
-export default function Workspace() {
+export default function Workspace({ onSourcesChange }: WorkspaceProps) {
   const [input, setInput] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,7 +84,7 @@ export default function Workspace() {
     const timer = setInterval(() => {
       setRateLimitCountdown((prev) => {
         if (prev <= 1) {
-          setError(null); // Clear error when countdown ends
+          setError(null);
           return 0;
         }
         return prev - 1;
@@ -87,6 +93,11 @@ export default function Workspace() {
 
     return () => clearInterval(timer);
   }, [rateLimitCountdown]);
+
+  // Notify parent of sources count change
+  useEffect(() => {
+    onSourcesChange?.(sources.length);
+  }, [sources.length, onSourcesChange]);
 
   useEffect(() => {
     const loadSources = async () => {
@@ -143,7 +154,6 @@ export default function Workspace() {
       return;
     }
 
-    // Prevent generating if rate limited
     if (rateLimitCountdown > 0) {
       setError(`Please wait ${rateLimitCountdown} seconds before retrying.`);
       return;
@@ -154,14 +164,13 @@ export default function Workspace() {
     setNotesLoadingStage(0);
 
     try {
-      // Simulate loading stages
-      setNotesLoadingStage(1); // "Reading sources..."
+      setNotesLoadingStage(1);
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      setNotesLoadingStage(2); // "Analyzing context..."
+      setNotesLoadingStage(2);
       const response = await generateNotes();
 
-      setNotesLoadingStage(3); // "Writing notes..."
+      setNotesLoadingStage(3);
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       setNotesContent(response.notes);
@@ -170,7 +179,6 @@ export default function Workspace() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to generate notes. Please try again.";
 
-      // Check if it's a rate limit error
       if (err instanceof Error && (err.name === "RateLimitError" || errorMessage.includes("429"))) {
         setRateLimitCountdown(60);
         setError("API Limit reached. Please wait 60 seconds before retrying.");
@@ -215,7 +223,6 @@ export default function Workspace() {
       return;
     }
 
-    // Prevent generating if rate limited
     if (rateLimitCountdown > 0) {
       setError(`Please wait ${rateLimitCountdown} seconds before retrying.`);
       return;
@@ -235,7 +242,6 @@ export default function Workspace() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to generate cheat sheet. Please try again.";
 
-      // Check if it's a rate limit error
       if (err instanceof RateLimitError || errorMessage.includes("429")) {
         setRateLimitCountdown(60);
         setError("API Limit reached. Please wait 60 seconds before retrying.");
@@ -276,16 +282,6 @@ export default function Workspace() {
     setIsFullscreen(!isFullscreen);
   };
 
-  const getBorderColor = () => {
-    if (!input.trim()) return "border-slate-600";
-    switch (detectedType) {
-      case "video": return "border-red-500";
-      case "link": return "border-blue-500";
-      case "note": return "border-green-500";
-      default: return "border-slate-600";
-    }
-  };
-
   const getDetectedLabel = () => {
     if (!input.trim()) return "";
     switch (detectedType) {
@@ -298,71 +294,98 @@ export default function Workspace() {
 
   return (
     <>
-      <section className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-slate-700 bg-slate-900/70 p-6 shadow-lg">
-          <h2 className="text-xl font-medium">Drag &amp; Drop Workspace</h2>
-          <p className="mt-2 text-sm text-slate-300">
-            Paste a YouTube URL, website link, or write quick notes to build your study
-            source stack.
-          </p>
+      {/* Two-column responsive grid: 60/40 desktop, single column mobile */}
+      <section className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        {/* Input Section - 60% on desktop */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-2xl border border-slate-700/50 bg-linear-to-br from-slate-900/50 via-slate-900/30 to-slate-950/50 p-6 shadow-xl backdrop-blur-sm"
+        >
+          <div className="space-y-2 mb-6">
+            <h2 className="text-2xl font-bold text-slate-100">Add Your Sources</h2>
+            <p className="text-sm text-slate-400">
+              Drag, paste a YouTube URL, website link, or write quick notes to build your study source stack.
+            </p>
+          </div>
 
-          <form className="mt-6 space-y-3" onSubmit={handleAddSource}>
+          <form className="space-y-4" onSubmit={handleAddSource}>
+            {/* Drag & Drop Zone with pulse animation */}
             <motion.div
-              className={`relative rounded-xl border-2 bg-slate-950 px-4 py-3 transition-all duration-300 ${isDragOver ? "scale-105 shadow-lg shadow-cyan-400/20" : ""
-                } ${getBorderColor()}`}
+              className={`relative rounded-2xl border-2 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${isDragOver ? "scale-105 border-violet-400 shadow-2xl shadow-violet-500/20" : "border-slate-700"
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              animate={isDragOver ? { boxShadow: "0 0 20px 0px rgba(167, 139, 250, 0.3)" } : {}}
             >
+              {/* Animated dashed border pulse */}
+              {isDragOver && (
+                <motion.div
+                  className="absolute inset-0 rounded-xl border-2 border-dashed border-violet-400"
+                  animate={{
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+              )}
+
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={handlePaste}
-                className={`min-h-32 w-full resize-none bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-400 ${isFullscreen ? "min-h-96" : ""
+                className={`relative z-10 min-h-40 w-full resize-none bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-violet-400 focus:ring-offset-0 rounded-lg px-2 py-1 ${isFullscreen ? "min-h-96" : ""
                   }`}
-                placeholder="Paste URL or type a note..."
+                placeholder="Paste URL, website link, or type your notes..."
               />
+
+              {/* Detected type indicator */}
               {input.trim() && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute top-2 right-2 rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-300"
+                  className="absolute top-3 right-3 rounded-lg bg-slate-800/70 px-3 py-1.5 text-xs font-semibold text-slate-200 border border-slate-700/50"
                 >
-                  Detected: {getDetectedLabel()}
+                  Detected: <span className="text-violet-300">{getDetectedLabel()}</span>
                 </motion.div>
               )}
-              {showPastedAnimation && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-green-500 px-2 py-1 text-xs text-white"
-                >
-                  <Check size={12} />
-                  Pasted
-                </motion.div>
-              )}
-            </motion.div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-slate-300">
-                  Detected type: <span className="font-semibold text-cyan-300">{detectedType}</span>
-                </p>
-                {detectedType === "note" && (
-                  <button
-                    type="button"
-                    onClick={toggleFullscreen}
-                    className="flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
+
+              {/* Paste animation indicator */}
+              <AnimatePresence>
+                {showPastedAnimation && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
                   >
-                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                    {isFullscreen ? "Minimize" : "Expand"}
-                  </button>
+                    <Check size={14} />
+                    Pasted!
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-sm text-slate-400">
+                Type: <span className="font-semibold text-violet-300">{detectedType}</span>
+              </p>
+              {detectedType === "note" && (
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="flex items-center gap-2 rounded-lg border border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-300 transition hover:bg-slate-800/50 hover:text-violet-300 min-h-11"
+                >
+                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  {isFullscreen ? "Minimize" : "Expand"}
+                </button>
+              )}
               <motion.button
                 type="submit"
-                disabled={isSaving}
-                className="flex items-center gap-2 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSaving || !input.trim()}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-50 min-h-11"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -377,73 +400,95 @@ export default function Workspace() {
               </motion.button>
             </div>
           </form>
-        </div>
+        </motion.div>
 
-        <aside className="rounded-2xl border border-slate-700 bg-slate-900/70 p-6 shadow-lg">
-          <h3 className="text-lg font-medium">Added Sources</h3>
+        {/* Source List - 40% on desktop */}
+        <motion.aside
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="rounded-2xl border border-slate-700/50 bg-linear-to-br from-slate-900/50 via-slate-900/30 to-slate-950/50 p-6 shadow-xl backdrop-blur-sm flex flex-col"
+        >
+          <h3 className="text-xl font-bold text-slate-100 mb-4">Added Sources</h3>
+
           {error && (
-            <p className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {error}
-            </p>
-          )}
-          {isLoading ? (
-            <p className="mt-4 text-sm text-slate-300">Loading sources...</p>
-          ) : sources.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-300">No sources added yet.</p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {sources.map((source) => (
-                <motion.li
-                  key={source.id}
-                  initial={{ x: 300, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                  }}
-                  whileHover={{ y: -4 }}
-                  className="rounded-xl border border-slate-700 bg-slate-950/80 p-3 transition-shadow hover:shadow-lg"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {typeIcon(source.type)}
-                      <span className="text-xs uppercase tracking-wide text-slate-300">
-                        {source.type}
-                      </span>
-                    </div>
-                    <motion.button
-                      type="button"
-                      onClick={() => void handleDeleteSource(source.id)}
-                      className="rounded-md p-1 text-slate-400 transition hover:bg-slate-800 hover:text-rose-300"
-                      aria-label="Delete source"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Trash2 size={16} />
-                    </motion.button>
-                  </div>
-                  <p className="mt-2 wrap-break-word text-sm text-slate-100">{source.content}</p>
-                  {source.video_id && (
-                    <p className="mt-1 text-xs text-slate-400">Video ID: {source.video_id}</p>
-                  )}
-                </motion.li>
-              ))}
-            </ul>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+            >
+              ⚠️ {error}
+            </motion.div>
           )}
 
+          {/* Sources List */}
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <p className="text-sm text-slate-400 py-4">Loading sources...</p>
+            ) : sources.length === 0 ? (
+              <div className="flex items-center justify-center h-32">
+                <p className="text-sm text-slate-500 text-center">No sources yet. Add one to get started!</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                <ul className="space-y-3">
+                  {sources.map((source) => (
+                    <motion.li
+                      key={source.id}
+                      layout
+                      initial={{ x: 100, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: -100, opacity: 0, scale: 0.9 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                      className="group rounded-xl border border-slate-700/50 bg-slate-800/30 p-3 transition-all hover:bg-slate-800/50 hover:border-slate-600/50 hover:shadow-lg"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2.5 flex-1">
+                          {typeIcon(source.type)}
+                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            {source.type}
+                          </span>
+                        </div>
+                        <motion.button
+                          type="button"
+                          onClick={() => void handleDeleteSource(source.id)}
+                          className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-rose-300 opacity-0 group-hover:opacity-100"
+                          aria-label="Delete source"
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <Trash2 size={16} />
+                        </motion.button>
+                      </div>
+                      <p className="mt-2 text-xs sm:text-sm text-slate-300 line-clamp-2">{source.content}</p>
+                      {source.video_id && (
+                        <p className="mt-1.5 text-xs text-slate-500">Video ID: {source.video_id}</p>
+                      )}
+                    </motion.li>
+                  ))}
+                </ul>
+              </AnimatePresence>
+            )}
+          </div>
+
+          {/* Action Buttons */}
           {sources.length > 0 && !isLoading && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-6 space-y-3"
+              className="mt-6 space-y-3 border-t border-slate-700/30 pt-4"
             >
-              {/* Generate Notes Button/Loading */}
+              {/* Generate Notes Button */}
               {isGeneratingNotes ? (
-                <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-4"
+                >
                   <div className="flex items-center gap-2 mb-3">
-                    <Loader2 size={16} className="animate-spin text-cyan-400" />
-                    <p className="text-sm font-semibold text-cyan-300">
+                    <Loader2 size={16} className="animate-spin text-violet-400" />
+                    <p className="text-xs sm:text-sm font-semibold text-violet-300">
                       {notesLoadingStage === 1
                         ? "Reading sources..."
                         : notesLoadingStage === 2
@@ -453,7 +498,7 @@ export default function Workspace() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-700">
                     <motion.div
-                      className="h-full bg-linear-to-r from-cyan-400 to-emerald-400"
+                      className="h-full bg-linear-to-r from-violet-400 to-indigo-400"
                       initial={{ width: "0%" }}
                       animate={{
                         width:
@@ -466,55 +511,56 @@ export default function Workspace() {
                       transition={{ duration: 0.5 }}
                     />
                   </div>
-                </div>
+                </motion.div>
               ) : (
                 <motion.button
                   onClick={handleGenerateNotes}
                   disabled={isGeneratingNotes || rateLimitCountdown > 0}
-                  className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition ${rateLimitCountdown > 0
+                  className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs sm:text-sm font-semibold transition min-h-11 ${rateLimitCountdown > 0
                     ? "cursor-not-allowed bg-slate-700 text-slate-400 opacity-50"
-                    : "bg-linear-to-r from-cyan-400 to-emerald-400 text-slate-950 hover:shadow-lg hover:shadow-cyan-400/20"
+                    : "bg-linear-to-r from-violet-500 to-indigo-500 text-white hover:shadow-lg hover:shadow-violet-500/30"
                     }`}
                   whileHover={rateLimitCountdown > 0 ? {} : { scale: 1.02 }}
                   whileTap={rateLimitCountdown > 0 ? {} : { scale: 0.98 }}
                 >
-                  <Sparkles size={18} />
+                  <Sparkles size={16} />
                   {rateLimitCountdown > 0
                     ? `Wait ${rateLimitCountdown}s`
-                    : "Generate Study Notes"}
+                    : "Generate Notes"}
                 </motion.button>
               )}
 
               {/* Generate Cheat Sheet Button */}
               {isGeneratingCheatSheet ? (
-                <div className="rounded-lg bg-slate-800/50 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Loader2 size={16} className="animate-spin text-cyan-400" />
-                    <p className="text-sm font-medium text-slate-200">
-                      Analyzing sources with RAG...
-                    </p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-lg bg-slate-800/50 p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin text-amber-400" />
+                    <p className="text-xs sm:text-sm font-medium text-slate-200">Generating...</p>
                   </div>
-                </div>
+                </motion.div>
               ) : (
                 <motion.button
                   onClick={handleGenerateCheatSheet}
                   disabled={isGeneratingCheatSheet || rateLimitCountdown > 0}
-                  className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition ${rateLimitCountdown > 0
+                  className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs sm:text-sm font-semibold transition min-h-11 ${rateLimitCountdown > 0
                     ? "cursor-not-allowed bg-slate-700 text-slate-400 opacity-50"
-                    : "bg-linear-to-r from-amber-400 to-orange-400 text-slate-950 hover:shadow-lg hover:shadow-amber-400/20"
+                    : "bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/30"
                     }`}
                   whileHover={rateLimitCountdown > 0 ? {} : { scale: 1.02 }}
                   whileTap={rateLimitCountdown > 0 ? {} : { scale: 0.98 }}
                 >
-                  <Sparkles size={18} />
-                  {rateLimitCountdown > 0
-                    ? `Wait ${rateLimitCountdown}s`
-                    : "Generate Cheat Sheet"}
+                  <Sparkles size={16} />
+                  {rateLimitCountdown > 0 ? `Wait ${rateLimitCountdown}s` : "Cheat Sheet"}
                 </motion.button>
               )}
             </motion.div>
           )}
 
+          {/* Cheat Sheet Modal */}
           <AnimatePresence>
             {isCheatSheetOpen && (
               <motion.div
@@ -565,9 +611,10 @@ export default function Workspace() {
               </motion.div>
             )}
           </AnimatePresence>
-        </aside>
-      </section >
+        </motion.aside>
+      </section>
 
+      {/* Notes Canvas Modal */}
       <NotesCanvas
         isOpen={isNotesOpen}
         onClose={() => setIsNotesOpen(false)}
@@ -576,13 +623,14 @@ export default function Workspace() {
         onSave={handleSaveNotes}
       />
 
+      {/* Fullscreen Editor Modal */}
       <AnimatePresence>
         {isFullscreen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={toggleFullscreen}
           >
             <motion.div
@@ -593,7 +641,7 @@ export default function Workspace() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-medium">Fullscreen Note Editor</h3>
+                <h3 className="text-lg font-bold text-slate-100">Fullscreen Note Editor</h3>
                 <button
                   onClick={toggleFullscreen}
                   className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
@@ -605,14 +653,14 @@ export default function Workspace() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onPaste={handlePaste}
-                className="min-h-96 w-full resize-none rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-400"
+                className="min-h-96 w-full resize-none rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-violet-400"
                 placeholder="Type your long-form note here..."
                 autoFocus
               />
               <div className="mt-4 flex justify-end gap-3">
                 <button
                   onClick={toggleFullscreen}
-                  className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+                  className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
                 >
                   Cancel
                 </button>
@@ -620,9 +668,8 @@ export default function Workspace() {
                   onClick={(e) => {
                     e.preventDefault();
                     toggleFullscreen();
-                    // The form will be submitted when fullscreen closes
                   }}
-                  className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                  className="rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-violet-500/30"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
