@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -17,13 +18,20 @@ class ReportRequest(BaseModel):
     title: str | None = None  # Optional: report title
 
 
-
 class CheatSheetRequest(BaseModel):
     topic: str = ""
     notes: str = ""
 
 
-app = FastAPI(title="justBeforExam API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Shutdown event (if needed in future)
+
+
+app = FastAPI(title="justBeforExam API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,11 +45,6 @@ app.add_middleware(
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
 
 
 @app.post("/api/sources", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
