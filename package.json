@@ -1,0 +1,13 @@
+{
+  "name": "justbeforeexam",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "concurrently -k -n BACKEND,FRONTEND -c cyan,magenta \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "bash -lc 'cd backend && if [ -f .venv/bin/activate ]; then source .venv/bin/activate; elif [ -f venv/bin/activate ]; then source venv/bin/activate; fi && uvicorn main:app --reload --port 8000'",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
