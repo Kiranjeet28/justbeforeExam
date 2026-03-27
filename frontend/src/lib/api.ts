@@ -6,8 +6,8 @@ export type GenerateReportPayload = {
 };
 
 export type GenerateCheatSheetPayload = {
-  topic: string;
-  notes: string;
+  source_ids: number[];
+  topic?: string;
 };
 
 export type SourceType = "video" | "link" | "note";
@@ -49,8 +49,74 @@ export function generateReport(payload: GenerateReportPayload) {
   return postJSON("/api/generate-report", payload);
 }
 
-export function generateCheatSheet(payload: GenerateCheatSheetPayload) {
-  return postJSON("/api/generate-cheat-sheet", payload);
+export async function generateCheatSheet(payload: GenerateCheatSheetPayload) {
+  const response = await fetch(`${API_BASE_URL}/api/generate-cheat-sheet`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const status = response.status;
+
+    // Handle rate limiting (429 Too Many Requests)
+    if (status === 429) {
+      throw new RateLimitError(errorText || "API Limit reached. Please wait 60 seconds before retrying.");
+    }
+
+    throw new Error(`Request failed (${status}): ${errorText}`);
+  }
+
+  return response.json() as Promise<{
+    success: boolean;
+    notes: string;
+    sources_count: number;
+    provider: string;
+    topic: string;
+  }>;
+}
+
+export async function generateNotes() {
+  const response = await fetch(`${API_BASE_URL}/api/generate-notes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const status = response.status;
+
+    // Handle rate limiting (429 Too Many Requests)
+    if (status === 429) {
+      throw new RateLimitError(errorText || "API Limit reached. Please wait 60 seconds before retrying.");
+    }
+
+    throw new Error(`Request failed (${status}): ${errorText}`);
+  }
+
+  return response.json() as Promise<{
+    success: boolean;
+    notes: string;
+    sources_count: number;
+    provider: string;
+    citations: Array<{
+      id: number;
+      type: string;
+      preview: string;
+    }>;
+  }>;
+}
+
+export class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RateLimitError";
+  }
 }
 
 export async function fetchSources() {
