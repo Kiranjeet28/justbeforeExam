@@ -1,4 +1,13 @@
-import Workspace from "@/components/Workspace";
+import dynamic from "next/dynamic";
+
+const Workspace = dynamic(() => import("@/components/Workspace"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-6 shadow-lg">
+      <p className="text-slate-300">Loading workspace...</p>
+    </div>
+  ),
+});
 
 export default function Home() {
   return (
