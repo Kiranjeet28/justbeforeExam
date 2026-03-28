@@ -216,44 +216,48 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
           <div className="mb-6 space-y-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-2xl font-bold text-slate-100">Direct Content</h2>
-              <div className="flex items-center gap-2">
-                {showContentPreview && (
-                  <motion.button
-                    type="button"
-                    onClick={handleClearAll}
-                    className="text-xs font-semibold uppercase tracking-wide text-rose-300/90 transition hover:text-rose-200"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Clear all
-                  </motion.button>
-                )}
-                {linkSources.length > 0 && (
-                  <motion.button
-                    type="button"
-                    onClick={() => void handleGenerateExamNotes()}
-                    disabled={isRagGenerating}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-55"
-                    whileHover={isRagGenerating ? {} : { scale: 1.02 }}
-                    whileTap={isRagGenerating ? {} : { scale: 0.98 }}
-                  >
-                    {isRagGenerating ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} />
-                        Generate
-                      </>
-                    )}
-                  </motion.button>
-                )}
-              </div>
+              {showContentPreview && (
+                <motion.button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="text-xs font-semibold uppercase tracking-wide text-rose-300/90 transition hover:text-rose-200"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Clear all
+                </motion.button>
+              )}
             </div>
 
           </div>
+
+          {linkSources.length > 0 && (
+            <motion.button
+              type="button"
+              onClick={() => void handleGenerateExamNotes()}
+              disabled={isRagGenerating}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 w-full rounded-xl bg-linear-to-r from-blue-600 via-blue-700 to-blue-800 px-6 py-4 text-center font-bold text-white shadow-lg shadow-blue-600/30 transition hover:shadow-blue-600/50 disabled:cursor-not-allowed disabled:opacity-55"
+              whileHover={isRagGenerating ? {} : { scale: 1.02 }}
+              whileTap={isRagGenerating ? {} : { scale: 0.98 }}
+            >
+              <div className="flex items-center justify-center gap-3">
+                {isRagGenerating ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    <span className="text-lg">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={20} />
+                    <span className="text-lg">Generate</span>
+                  </>
+                )}
+              </div>
+            </motion.button>
+          )}
 
           <form className="space-y-4" onSubmit={handleAddSource}>
             {!showContentPreview ? (
@@ -545,31 +549,7 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="flex flex-col rounded-2xl border border-slate-700/50 bg-linear-to-br from-slate-900/50 via-slate-900/30 to-slate-950/50 p-6 shadow-xl backdrop-blur-sm"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-100">Session sources</h3>
-            {linkSources.length > 0 && (
-              <motion.button
-                type="button"
-                onClick={() => void handleGenerateExamNotes()}
-                disabled={isRagGenerating}
-                className="flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-55"
-                whileHover={isRagGenerating ? {} : { scale: 1.02 }}
-                whileTap={isRagGenerating ? {} : { scale: 0.98 }}
-              >
-                {isRagGenerating ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={14} />
-                    Generate
-                  </>
-                )}
-              </motion.button>
-            )}
-          </div>
+          <h3 className="mb-4 text-xl font-bold text-slate-100">Session sources</h3>
 
           {error && (
             <motion.div
@@ -666,14 +646,37 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                     </p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setRagModalOpen(false)}
-                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-                  aria-label="Close"
-                >
-                  <X size={22} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      const element = document.createElement("a");
+                      const file = new Blob([ragMarkdown], { type: "text/plain" });
+                      element.href = URL.createObjectURL(file);
+                      element.download = "exam-notes.txt";
+                      document.body.appendChild(element);
+                      element.click();
+                      document.body.removeChild(element);
+                    }}
+                    className="flex items-center gap-2 rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 px-3 py-2 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Download notes as Text"
+                  >
+                    <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download
+                  </motion.button>
+                  <button
+                    type="button"
+                    onClick={() => setRagModalOpen(false)}
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+                    aria-label="Close"
+                  >
+                    <X size={22} />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4">
                 <div className="prose prose-invert max-w-none prose-headings:text-violet-200 prose-p:text-slate-300">
