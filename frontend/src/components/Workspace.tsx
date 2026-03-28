@@ -131,11 +131,15 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
     setError(null);
     try {
       const content = buildRagContextFromLinks(linkSources);
+      console.log("🚀 Starting exam notes generation...");
       const { markdown, model } = await generateExamNotes(content);
+      console.log("✅ Model used:", model);
+      console.log("📝 Generated markdown length:", markdown.length);
       setRagMarkdown(markdown);
       setRagModel(model);
       setRagModalOpen(true);
     } catch (err) {
+      console.error("❌ Error generating exam notes:", err);
       setError(err instanceof Error ? err.message : "Failed to generate exam notes.");
     } finally {
       setIsRagGenerating(false);
