@@ -91,13 +91,23 @@ export function NotesCanvas({
                                     <h2 className="text-2xl font-bold text-slate-100">{title}</h2>
                                 )}
                             </div>
-                            <button
-                                onClick={onClose}
-                                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-                                aria-label="Close"
-                            >
-                                <X size={24} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={downloadNotes}
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-emerald-400"
+                                    aria-label="Download notes"
+                                    title="Download notes as Markdown"
+                                >
+                                    <FileDown size={24} />
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+                                    aria-label="Close"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Content Area */}

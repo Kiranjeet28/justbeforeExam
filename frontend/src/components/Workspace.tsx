@@ -142,6 +142,7 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
     }
   };
 
+
   const handlePaste = () => {
     setShowPastedAnimation(true);
     setTimeout(() => setShowPastedAnimation(false), 1500);
@@ -227,17 +228,15 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                 </motion.button>
               )}
             </div>
-            <p className="text-sm text-slate-400">
-              Add up to three links per session. Preview raw extracted content below—no server upload.
-            </p>
+
           </div>
 
           <form className="space-y-4" onSubmit={handleAddSource}>
             {!showContentPreview ? (
               <motion.div
                 className={`relative rounded-2xl border-2 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${isDragOver
-                    ? "scale-105 border-violet-400 shadow-2xl shadow-violet-500/20"
-                    : "border-slate-700"
+                  ? "scale-105 border-violet-400 shadow-2xl shadow-violet-500/20"
+                  : "border-slate-700"
                   }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -339,8 +338,8 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                               type="button"
                               onClick={() => setSelectedLinkId(link.id)}
                               className={`max-w-full truncate rounded-full border px-3 py-1.5 text-xs font-medium transition ${selectedLink?.id === link.id
-                                  ? "border-rose-400/60 bg-rose-500/20 text-rose-100"
-                                  : "border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500"
+                                ? "border-rose-400/60 bg-rose-500/20 text-rose-100"
+                                : "border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500"
                                 }`}
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
@@ -367,8 +366,8 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                               type="button"
                               onClick={() => setSelectedLinkId(link.id)}
                               className={`max-w-full truncate rounded-full border px-3 py-1.5 text-xs font-medium transition ${selectedLink?.id === link.id
-                                  ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100"
-                                  : "border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500"
+                                ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100"
+                                : "border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500"
                                 }`}
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
@@ -420,18 +419,6 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                                   {selectedLink.transcriptIsGenerated ? ", auto-generated" : ""})
                                 </p>
                               )}
-                              <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                  Transcript
-                                </p>
-                                {selectedLink.transcript ? (
-                                  <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-950/60 px-3 py-2 text-xs leading-relaxed text-slate-300">
-                                    {selectedLink.transcript}
-                                  </div>
-                                ) : (
-                                  <p className="mt-2 text-xs text-slate-500">No transcript available.</p>
-                                )}
-                              </div>
                             </div>
                           ) : (
                             <div className="space-y-4 text-sm text-slate-200">
@@ -464,6 +451,35 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+
+                  <div className="mt-6 space-y-3 border-t border-slate-700/30 pt-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onPaste={handlePaste}
+                        className="flex-1 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:ring-2 focus:ring-violet-400"
+                        placeholder="https://…"
+                      />
+                      <motion.button
+                        type="submit"
+                        disabled={isParsing || !input.trim()}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isParsing ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Parsing…
+                          </>
+                        ) : (
+                          "Add link"
+                        )}
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -579,12 +595,12 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                 {isRagGenerating ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Generating with Gemini…
+                    Generating...
                   </>
                 ) : (
                   <>
                     <Sparkles size={18} />
-                    Generate exam notes (Gemini)
+                    Generate exam notes
                   </>
                 )}
               </motion.button>

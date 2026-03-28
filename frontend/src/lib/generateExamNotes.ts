@@ -6,6 +6,7 @@ const API_BASE =
 export type GenerateExamNotesResult = {
   markdown: string;
   model: string;
+  engine_used: string;
 };
 
 export async function generateExamNotes(content: string): Promise<GenerateExamNotesResult> {
@@ -18,6 +19,7 @@ export async function generateExamNotes(content: string): Promise<GenerateExamNo
     detail?: unknown;
     markdown?: string;
     model?: string;
+    engine_used?: string;
   };
   if (!res.ok) {
     const detail = data.detail;
@@ -26,12 +28,16 @@ export async function generateExamNotes(content: string): Promise<GenerateExamNo
         ? detail
         : Array.isArray(detail)
           ? detail.map((d: { msg?: string }) => d?.msg ?? "").filter(Boolean).join("; ") ||
-            `Request failed (${res.status})`
+          `Request failed (${res.status})`
           : `Request failed (${res.status})`;
     throw new Error(msg);
   }
   if (!data.markdown) {
     throw new Error("No markdown in response");
   }
-  return { markdown: data.markdown, model: data.model ?? "unknown" };
+  return {
+    markdown: data.markdown,
+    model: data.model ?? "unknown",
+    engine_used: data.engine_used ?? "unknown",
+  };
 }
