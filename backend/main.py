@@ -1,14 +1,24 @@
 from contextlib import asynccontextmanager
+from typing import Any
+
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from google.api_core import exceptions as google_api_exceptions
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from youtube_transcript_api._errors import YouTubeTranscriptApiException
 
 from database import Base, engine, get_db
+from rag.config import ModelConfig
+from rag.processor import StudyMaterialEngine
 from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
 from services import AIService
 from services.ai_service import RateLimitExceeded
+from services.youtube_transcript_service import (
+    fetch_youtube_transcript_bundle,
+    transcript_api_user_message,
+)
 from utils import extract_youtube_video_id
 
 
@@ -22,6 +32,18 @@ class ReportRequest(BaseModel):
 class CheatSheetRequest(BaseModel):
     source_ids: list[int] = []
     topic: str = ""
+
+
+class YouTubeTranscriptRequest(BaseModel):
+    url: str = Field(..., min_length=4, description="Full YouTube watch or share URL")
+
+
+class GenerateV1Request(BaseModel):
+    content: str = Field(
+        ...,
+        min_length=1,
+        description="Raw text from user sources (transcripts, article extracts, pasted notes).",
+    )
 
 
 @asynccontextmanager
@@ -46,6 +68,46 @@ app.add_middleware(
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/api/v1/generate")
+def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict[str, str]:
+    """
+    Generate Markdown exam notes from source text using Gemini (rules.txt + format.txt).
+    Retries on 429 / resource exhausted for free-tier limits (~10 RPM).
+    """
+    try:
+        engine = StudyMaterialEngine()
+        markdown = engine.generate_exam_notes(payload.content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except google_api_exceptions.ResourceExhausted as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Gemini rate limit exceeded after retries. Wait and try again.",
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        ) from e
+    return {"markdown": markdown, "model": ModelConfig.MODEL_NAME}
+
+
+@app.post("/api/youtube/transcript")
+def youtube_transcript(payload: YouTubeTranscriptRequest) -> dict[str, Any]:
+    """
+    Return timed captions and oEmbed title/channel for a YouTube video.
+    """
+    try:
+        return fetch_youtube_transcript_bundle(payload.url.strip())
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except YouTubeTranscriptApiException as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=transcript_api_user_message(e),
+        ) from e
 
 
 @app.post("/api/sources", response_model=SourceRead, status_code=status.HTTP_201_CREATED)

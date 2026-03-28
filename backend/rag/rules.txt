@@ -1,0 +1,17 @@
+Rules for Using Gemini API Safely
+
+1.  Always validate user input before sending it to the API.
+2.  Do not include misleading or false context in prompts.
+3.  Avoid prompt injection by sanitizing inputs.
+4.  Limit the length of input data to prevent abuse.
+5.  Use authentication (API keys) securely and never expose them.
+6.  Implement rate limiting to avoid excessive requests.
+7.  Do not send sensitive or personal data unless necessary.
+8.  Log API usage for monitoring and debugging.
+9.  Handle API errors gracefully.
+10. Avoid recursive or infinite API calls.
+11. Ensure proper timeout settings for requests.
+12. Follow Google’s API usage policies.
+13. Use HTTPS for all API communications.
+14. Restrict access using backend (do not expose API calls on frontend).
+15. Regularly rotate API keys for security.
