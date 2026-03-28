@@ -21,31 +21,10 @@ export default function GenerateReport({ sourceCount }: GenerateReportProps) {
         setShowViewer(true);
 
         try {
-            const response = await fetch("http://localhost:8000/api/generate-report", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    source_ids: [],
-                    prompt: "",
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    errorData.detail || `Failed to generate report (${response.status})`
-                );
-            }
-
-            const data = await response.json();
-
-            if (!data.success || !data.report) {
-                throw new Error("Invalid response from server");
-            }
-
-            setReportContent(data.report);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            const mock = `# Study report (frontend preview)\n\nThis placeholder replaces server-side generation. You have **${sourceCount}** source(s) in the workspace.\n\n- Section one: key concepts\n- Section two: practice questions\n\n_Generated locally — no API call._`;
+            console.log("[GenerateReport] mock report:", { sourceCount, mock });
+            setReportContent(mock);
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
         } finally {

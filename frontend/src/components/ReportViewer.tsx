@@ -40,27 +40,19 @@ export default function ReportViewer({
 
         setSaving(true);
         try {
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/reports`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        content: reportContent,
-                        title: `Report - ${new Date().toLocaleDateString()}`,
-                        source_ids: sourceCount.toString(),
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to save report");
-            }
-
-            alert("✓ Report saved to database successfully!");
+            const key = "justbeforeexam-report-draft";
+            const payload = {
+                content: reportContent,
+                title: `Report - ${new Date().toLocaleDateString()}`,
+                source_ids: sourceCount.toString(),
+                savedAt: new Date().toISOString(),
+            };
+            localStorage.setItem(key, JSON.stringify(payload));
+            console.log("[ReportViewer] saved draft locally:", payload);
+            alert("✓ Report saved locally in this browser.");
         } catch (err) {
             console.error("Error saving report:", err);
-            alert("Failed to save report to database. Please try again.");
+            alert("Could not save report locally. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -124,45 +116,45 @@ export default function ReportViewer({
                             <ReactMarkdown
                                 className="prose prose-invert max-w-none"
                                 components={{
-                                    h1: ({ children }: { children: ReactNode }) => (
+                                    h1: ({ children }: { children?: ReactNode }) => (
                                         <h1 className="text-3xl font-bold text-blue-300 mt-6 mb-4">
                                             {children}
                                         </h1>
                                     ),
-                                    h2: ({ children }: { children: ReactNode }) => (
+                                    h2: ({ children }: { children?: ReactNode }) => (
                                         <h2 className="text-2xl font-bold text-cyan-300 mt-5 mb-3 print:text-black">
                                             {children}
                                         </h2>
                                     ),
-                                    h3: ({ children }: { children: ReactNode }) => (
+                                    h3: ({ children }: { children?: ReactNode }) => (
                                         <h3 className="text-lg font-semibold text-blue-200 mt-4 mb-2 print:text-gray-800">
                                             {children}
                                         </h3>
                                     ),
-                                    p: ({ children }: { children: ReactNode }) => (
+                                    p: ({ children }: { children?: ReactNode }) => (
                                         <p className="text-gray-300 leading-relaxed mb-3 print:text-black">
                                             {children}
                                         </p>
                                     ),
-                                    ul: ({ children }: { children: ReactNode }) => (
+                                    ul: ({ children }: { children?: ReactNode }) => (
                                         <ul className="list-disc list-inside text-gray-300 mb-4 print:text-black">
                                             {children}
                                         </ul>
                                     ),
-                                    ol: ({ children }: { children: ReactNode }) => (
+                                    ol: ({ children }: { children?: ReactNode }) => (
                                         <ol className="list-decimal list-inside text-gray-300 mb-4 print:text-black">
                                             {children}
                                         </ol>
                                     ),
-                                    li: ({ children }: { children: ReactNode }) => (
+                                    li: ({ children }: { children?: ReactNode }) => (
                                         <li className="text-gray-300 print:text-black">{children}</li>
                                     ),
-                                    blockquote: ({ children }: { children: ReactNode }) => (
+                                    blockquote: ({ children }: { children?: ReactNode }) => (
                                         <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-400 my-4 print:text-black print:border-gray-400">
                                             {children}
                                         </blockquote>
                                     ),
-                                    code: ({ inline, children }: { inline?: boolean; children: ReactNode }) =>
+                                    code: ({ inline, children }: { inline?: boolean; children?: ReactNode }) =>
                                         inline ? (
                                             <code className="bg-gray-800 text-cyan-300 px-2 py-1 rounded text-sm font-mono print:bg-gray-200 print:text-gray-800">
                                                 {children}
@@ -172,12 +164,12 @@ export default function ReportViewer({
                                                 <code>{children}</code>
                                             </pre>
                                         ),
-                                    strong: ({ children }: { children: ReactNode }) => (
+                                    strong: ({ children }: { children?: ReactNode }) => (
                                         <strong className="text-blue-300 font-bold print:text-black">
                                             {children}
                                         </strong>
                                     ),
-                                    em: ({ children }: { children: ReactNode }) => (
+                                    em: ({ children }: { children?: ReactNode }) => (
                                         <em className="text-cyan-200 italic print:text-gray-600">
                                             {children}
                                         </em>
@@ -224,9 +216,9 @@ export default function ReportViewer({
                                     ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                                     : "bg-purple-600 text-white hover:bg-purple-700"
                                 }`}
-                            title="Save report to database"
+                            title="Save report locally in the browser"
                         >
-                            {saving ? "Saving..." : "💾 Save to DB"}
+                            {saving ? "Saving..." : "💾 Save locally"}
                         </button>
 
                         <button
