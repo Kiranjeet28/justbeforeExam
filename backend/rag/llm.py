@@ -3,7 +3,6 @@
 import os
 from typing import Optional
 
-from langchain_core.callbacks import StreamingStdOutCallbackHandler
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv

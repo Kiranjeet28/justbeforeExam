@@ -7,6 +7,7 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.tools import Tool, tool
+from langchain_core.documents import Document
 
 
 # Initialize HuggingFace Embeddings
@@ -51,19 +52,16 @@ def initialize_vector_store(context_path: str = None):
     # Split text into chunks by sections
     chunks = text.split("\n## ")
     documents = [
-        {"page_content": chunk, "metadata": {"source": "context.txt", "type": "exam_notes"}}
-        for chunk in chunks
+        Document(
+            page_content=chunk if i == 0 else f"## {chunk}",
+            metadata={"source": "context.txt", "type": "exam_notes"}
+        )
+        for i, chunk in enumerate(chunks)
         if chunk.strip()
     ]
 
     # Create FAISS vector store
-    vector_store = FAISS.from_documents(
-        [
-            type("Document", (), {"page_content": doc["page_content"], "metadata": doc["metadata"]})()
-            for doc in documents
-        ],
-        embeddings,
-    )
+    vector_store = FAISS.from_documents(documents, embeddings)
 
     # Save vector store locally
     vector_store.save_local(str(vector_store_path))

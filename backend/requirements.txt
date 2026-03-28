@@ -20,3 +20,5 @@ langchain-huggingface
 langgraph
 faiss-cpu
 tavily-python
+sentence-transformers
+torch

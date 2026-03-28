@@ -33,8 +33,8 @@ class RagAgent:
     def __init__(self):
         """Initialize the RAG agent with tools and state graph."""
         self.tools, self.tool_dict = get_all_tools()
-        self.graph = self._build_graph()
         self.checkpointer = MemorySaver()
+        self.graph = self._build_graph()
 
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph workflow."""
