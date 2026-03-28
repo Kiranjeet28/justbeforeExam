@@ -216,17 +216,41 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
           <div className="mb-6 space-y-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-2xl font-bold text-slate-100">Direct Content</h2>
-              {showContentPreview && (
-                <motion.button
-                  type="button"
-                  onClick={handleClearAll}
-                  className="text-xs font-semibold uppercase tracking-wide text-rose-300/90 transition hover:text-rose-200"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  Clear all
-                </motion.button>
-              )}
+              <div className="flex items-center gap-2">
+                {showContentPreview && (
+                  <motion.button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="text-xs font-semibold uppercase tracking-wide text-rose-300/90 transition hover:text-rose-200"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Clear all
+                  </motion.button>
+                )}
+                {linkSources.length > 0 && (
+                  <motion.button
+                    type="button"
+                    onClick={() => void handleGenerateExamNotes()}
+                    disabled={isRagGenerating}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-55"
+                    whileHover={isRagGenerating ? {} : { scale: 1.02 }}
+                    whileTap={isRagGenerating ? {} : { scale: 0.98 }}
+                  >
+                    {isRagGenerating ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} />
+                        Generate
+                      </>
+                    )}
+                  </motion.button>
+                )}
+              </div>
             </div>
 
           </div>
@@ -521,7 +545,31 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="flex flex-col rounded-2xl border border-slate-700/50 bg-linear-to-br from-slate-900/50 via-slate-900/30 to-slate-950/50 p-6 shadow-xl backdrop-blur-sm"
         >
-          <h3 className="mb-4 text-xl font-bold text-slate-100">Session sources</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-slate-100">Session sources</h3>
+            {linkSources.length > 0 && (
+              <motion.button
+                type="button"
+                onClick={() => void handleGenerateExamNotes()}
+                disabled={isRagGenerating}
+                className="flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-violet-500 to-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-55"
+                whileHover={isRagGenerating ? {} : { scale: 1.02 }}
+                whileTap={isRagGenerating ? {} : { scale: 0.98 }}
+              >
+                {isRagGenerating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    Generate
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
 
           {error && (
             <motion.div
@@ -584,26 +632,6 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 space-y-3 border-t border-slate-700/30 pt-4"
             >
-              <motion.button
-                type="button"
-                onClick={() => void handleGenerateExamNotes()}
-                disabled={isRagGenerating}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-55"
-                whileHover={isRagGenerating ? {} : { scale: 1.02 }}
-                whileTap={isRagGenerating ? {} : { scale: 0.98 }}
-              >
-                {isRagGenerating ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} />
-                    Generate exam notes
-                  </>
-                )}
-              </motion.button>
               <p className="text-center text-xs text-slate-500">
                 {linkSources.length} of {MAX_LINKS} links · sends combined text to backend{" "}
                 <code className="rounded bg-slate-800/80 px-1 text-[10px] text-slate-400">/api/v1/generate</code>
