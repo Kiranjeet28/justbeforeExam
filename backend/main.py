@@ -11,7 +11,7 @@ from youtube_transcript_api._errors import YouTubeTranscriptApiException
 
 from database import Base, engine, get_db
 from rag.config import ModelConfig
-from rag.processor import StudyMaterialEngine
+from rag.processor import StudyMaterialEngine, MultiModelNotesGenerator
 from rag.agent import run_agent
 from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
@@ -22,6 +22,23 @@ from services.youtube_transcript_service import (
     transcript_api_user_message,
 )
 from utils import extract_youtube_video_id
+
+# Global cache for summarizer model and tokenizer
+_summarizer_model = None
+_summarizer_tokenizer = None
+
+
+def get_summarizer_model_and_tokenizer():
+    """Get or initialize the summarizer model and tokenizer (cached)."""
+    global _summarizer_model, _summarizer_tokenizer
+    if _summarizer_model is None or _summarizer_tokenizer is None:
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+        
+        model_name = "facebook/bart-large-cnn"
+        _summarizer_tokenizer = AutoTokenizer.from_pretrained(model_name)
+        _summarizer_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    
+    return _summarizer_model, _summarizer_tokenizer
 
 
 class ReportRequest(BaseModel):
@@ -46,6 +63,16 @@ class GenerateV1Request(BaseModel):
         min_length=1,
         description="Raw text from user sources (transcripts, article extracts, pasted notes).",
     )
+
+
+class SummarizeTextRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=1,
+        description="Text to summarize using facebook/bart-large-cnn model.",
+    )
+    max_length: int = Field(150, ge=50, le=500, description="Maximum length of summary")
+    min_length: int = Field(50, ge=10, le=200, description="Minimum length of summary")
 
 
 class AgenticRagRequest(BaseModel):
@@ -80,25 +107,82 @@ def health_check() -> dict[str, str]:
 @app.post("/api/v1/generate")
 def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict[str, str]:
     """
-    Generate Markdown exam notes from source text using Gemini (rules.txt + format.txt).
-    Retries on 429 / resource exhausted for free-tier limits (~10 RPM).
+    Generate Markdown exam notes from source text using Groq (primary) with Gemini fallback.
+    
+    - STEP 1: Try Groq (Llama 3.3 70B)
+    - STEP 2: If Groq fails (429 rate limit or length exceeded), switch to Gemini
+    - STEP 3: Return notes with engine_used metadata
     """
     try:
-        engine = StudyMaterialEngine()
-        markdown = engine.generate_exam_notes(payload.content)
+        generator = MultiModelNotesGenerator()
+        result = generator.generate_full_notes(payload.content)
+        return {
+            "markdown": result["notes"],
+            "engine_used": result["engine_used"],
+            "model": ModelConfig.PRIMARY_MODEL,
+        }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    except google_api_exceptions.ResourceExhausted as e:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Gemini rate limit exceeded after retries. Wait and try again.",
-        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(e),
         ) from e
-    return {"markdown": markdown, "model": ModelConfig.MODEL_NAME}
+
+
+@app.post("/api/v1/summarize")
+def api_v1_summarize_text(payload: SummarizeTextRequest) -> dict[str, str]:
+    """
+    Summarize text using facebook/bart-large-cnn model from Hugging Face.
+    Uses cached model for better performance on subsequent calls.
+    """
+    try:
+        import torch
+        
+        # Get cached model and tokenizer (will load on first call)
+        model, tokenizer = get_summarizer_model_and_tokenizer()
+        
+        # Clean text
+        text = payload.text.strip()
+        
+        if not text:
+            raise ValueError("Text cannot be empty")
+        
+        # Tokenize input
+        inputs = tokenizer(text, max_length=1024, return_tensors="pt", truncation=True)
+        
+        # Generate summary
+        with torch.no_grad():
+            summary_ids = model.generate(
+                inputs["input_ids"],
+                max_length=payload.max_length,
+                min_length=payload.min_length,
+                num_beams=4,
+                early_stopping=True
+            )
+        
+        # Decode summary
+        summary_text = tokenizer.batch_decode(summary_ids, skip_special_tokens=True)[0]
+        
+        return {
+            "summary": summary_text,
+            "model": "facebook/bart-large-cnn"
+        }
+    except ImportError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Missing library: {str(e)}. Run: pip install transformers torch"
+        ) from e
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Summarization error: {str(e)}",
+        ) from e
 
 
 @app.post("/api/youtube/transcript")

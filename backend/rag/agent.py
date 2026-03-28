@@ -1,6 +1,7 @@
 """Agentic RAG with LangGraph: Planner, Researcher, Writer, Formatter Pipeline."""
 
 import json
+import logging
 from typing import Annotated, Any, Optional
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from typing_extensions import TypedDict
 
 from .tools import get_all_tools
 from .llm import get_completion
+from .processor import MultiModelNotesGenerator
+
+logger = logging.getLogger(__name__)
 
 
 # Define State
@@ -25,6 +29,7 @@ class AgentState(TypedDict):
     final_notes: str  # Formatted output from formatter node
     status_updates: list[str]  # Status messages for frontend
     topic: str  # The exam topic to prepare notes for
+    engine_used: str  # Track which engine(s) were used: "Groq" or "Groq + Gemini"
 
 
 class RagAgent:
@@ -117,8 +122,10 @@ Provide a brief plan in 2-3 sentences."""
 
     def _writer_node(self, state: AgentState) -> AgentState:
         """
-        Writer Node: Calls get_completion to generate draft notes.
-        Implements Groq->Gemini fallback.
+        Writer Node: Uses MultiModelNotesGenerator with Groq primary + Gemini fallback.
+        Handles:
+        - 429 rate limit: Switch to Gemini
+        - Length exceeded (finish_reason='length'): Continue with Gemini
         """
         topic = state.get("topic", "")
         context = state.get("context_data", "")
@@ -127,7 +134,7 @@ Provide a brief plan in 2-3 sentences."""
         state["status_updates"].append("✍️  Generating notes with AI...")
 
         # Build writing prompt
-        write_prompt = f"""Create comprehensive exam notes for: {topic}
+        user_input = f"""Create comprehensive exam notes for: {topic}
 
 Retrieved Context:
 {context}
@@ -143,28 +150,48 @@ Generate well-structured, detailed exam notes. Include:
 
 Format as markdown with clear sections."""
 
-        # Get completion with fallback
-        result = get_completion(write_prompt)
+        try:
+            # Use multi-model generator with Groq primary + Gemini fallback
+            generator = MultiModelNotesGenerator()
+            result = generator.generate_full_notes(user_input)
 
-        if result["status"] == "success":
-            state["status_updates"].append(f"✓ Draft generated with {result['model']}")
-        elif result["status"] == "fallback":
-            state["status_updates"].append(
-                f"⚡ Groq rate limited - Switched to Gemini. Reason: {result.get('reason', '')}"
-            )
-        else:
-            state["status_updates"].append(f"❌ Generation failed: {result.get('reason')}")
+            state["draft_notes"] = result["notes"]
+            state["engine_used"] = result["engine_used"]
 
-        state["draft_notes"] = result.get("content", "")
-        state["status_updates"].append("✓ Notes generated")
+            if result["engine_used"] == "Groq":
+                state["status_updates"].append("✓ Draft generated with Groq")
+            elif result["engine_used"] == "Groq + Gemini":
+                state["status_updates"].append("⚡ Groq truncated - Continued with Gemini")
+            elif result["engine_used"] == "Gemini":
+                state["status_updates"].append("⚡ Groq rate limited (429) - Switched to Gemini")
+
+            state["status_updates"].append("✓ Notes generated")
+
+        except Exception as e:
+            state["status_updates"].append(f"❌ Generation failed: {str(e)}")
+            state["draft_notes"] = ""
+            state["engine_used"] = "Unknown"
 
         return state
 
+    def _is_abrupt_ending(self, text: str) -> bool:
+        """Check if text ends abruptly (not ending with period, closing bracket, etc)."""
+        if not text.strip():
+            return False
+
+        text = text.strip()
+        # Check if ends with proper punctuation or closing brackets
+        proper_endings = (".", "!", "?", ")", "]", "}", "`", ">", "-", "*")
+        return not text.endswith(proper_endings)
+
     def _formatter_node(self, state: AgentState) -> AgentState:
         """
-        Formatter Node: Applies rules.txt and format.txt to the draft.
+        Formatter Node: 
+        1. Checks if draft notes end abruptly
+        2. If abrupt, regenerates with continuation
+        3. Applies rules.txt and format.txt
         """
-        state["status_updates"].append("🎨 Formatting and applying rules...")
+        state["status_updates"].append("🎨 Formatting and checking completeness...")
 
         draft = state.get("draft_notes", "")
 
@@ -183,6 +210,30 @@ Format as markdown with clear sections."""
             with open(format_path, "r") as f:
                 format_template = f.read()
 
+        # Check if draft ends abruptly
+        if self._is_abrupt_ending(draft):
+            state["status_updates"].append("⚠️  Draft ended abruptly - Requesting continuation...")
+            
+            # Request continuation
+            continuation_prompt = f"""The following exam notes ended abruptly. Please CONTINUE and COMPLETE them:
+
+PARTIAL NOTES:
+{draft}
+
+RULES TO FOLLOW:
+{rules}
+
+CONTINUE FROM WHERE IT STOPPED and complete all remaining sections. 
+Do NOT repeat what came before. 
+Ensure the notes are complete with all sections properly closed."""
+
+            result = get_completion(continuation_prompt)
+            continued_draft = draft + "\n\n" + result.get("content", "")
+            state["status_updates"].append("✓ Notes continued and completed")
+        else:
+            continued_draft = draft
+            state["status_updates"].append("✓ Draft is complete")
+
         # Build formatting prompt
         format_prompt = f"""Apply these formatting rules to the exam notes:
 
@@ -193,12 +244,12 @@ FORMAT TEMPLATE:
 {format_template}
 
 DRAFT NOTES TO FORMAT:
-{draft}
+{continued_draft}
 
 Return the properly formatted and rule-compliant exam notes."""
 
         result = get_completion(format_prompt)
-        state["final_notes"] = result.get("content", draft)
+        state["final_notes"] = result.get("content", continued_draft)
         state["status_updates"].append("✓ Formatting complete")
 
         return state
@@ -233,6 +284,7 @@ Return the properly formatted and rule-compliant exam notes."""
             "final_notes": "",
             "status_updates": [],
             "topic": topic,
+            "engine_used": "Unknown",
         }
 
         # Execute the graph
@@ -246,6 +298,7 @@ Return the properly formatted and rule-compliant exam notes."""
             "web_research": final_state.get("web_research", ""),
             "research_plan": final_state.get("research_plan", ""),
             "draft_notes": final_state.get("draft_notes", ""),
+            "engine_used": final_state.get("engine_used", "Unknown"),
         }
 
 

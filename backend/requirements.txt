@@ -18,6 +18,8 @@ langchain-community
 langchain-groq
 langchain-huggingface
 langgraph
+transformers
+torch
 faiss-cpu
 tavily-python
 sentence-transformers
