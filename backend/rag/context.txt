@@ -1,0 +1,71 @@
+# Core Concepts for Exam Preparation
+
+## Python Fundamentals
+- Variables and Data Types: int, float, string, list, dict, tuple, set
+- Control Structures: if-else, loops (for, while), break, continue
+- Functions: definition, parameters, return values, scope, decorators
+- Exception Handling: try-except-finally, custom exceptions, raising exceptions
+- Object-Oriented Programming: classes, inheritance, polymorphism, encapsulation
+
+## Data Structures
+- Lists: indexing, slicing, methods (append, extend, insert, remove, pop)
+- Dictionaries: key-value pairs, methods (keys, values, items, get, update)
+- Sets: unique elements, operations (union, intersection, difference)
+- Tuples: immutable sequences, unpacking, named tuples
+- Linked Lists: node-based structures, insertion, deletion, traversal
+
+## Algorithms
+- Sorting: Bubble Sort, Quick Sort, Merge Sort, Heap Sort
+- Searching: Linear Search, Binary Search, Hash Tables
+- Graph Algorithms: BFS, DFS, Dijkstra's Algorithm, Floyd-Warshall
+- Dynamic Programming: Memoization, Tabulation, Fibonacci, Knapsack Problem
+- Greedy Algorithms: Activity Selection, Huffman Coding
+
+## Database Management
+- SQL Basics: SELECT, INSERT, UPDATE, DELETE, WHERE, JOIN
+- Indexing: Primary Key, Foreign Key, Unique Index
+- Normalization: 1NF, 2NF, 3NF, BCNF
+- Transactions: ACID properties, commit, rollback
+- Query Optimization: Execution Plans, Index Usage
+
+## Web Development
+- HTTP Methods: GET, POST, PUT, DELETE, PATCH
+- REST API Design: Resources, Endpoints, Status Codes
+- Authentication: JWT, OAuth2, API Keys
+- Database Relationships: One-to-One, One-to-Many, Many-to-Many
+- Frontend Technologies: HTML, CSS, JavaScript, React, TypeScript
+
+## Machine Learning Basics
+- Supervised Learning: Classification, Regression
+- Unsupervised Learning: Clustering, Dimensionality Reduction
+- Model Evaluation: Accuracy, Precision, Recall, F1-Score
+- Overfitting and Underfitting: Regularization, Cross-Validation
+- Feature Engineering: Normalization, Encoding, Feature Selection
+
+## System Design
+- Scalability: Vertical Scaling, Horizontal Scaling, Load Balancing
+- Caching: Cache Invalidation, Cache Strategies
+- Databases: SQL vs NoSQL, ACID vs BASE
+- Message Queues: Pub-Sub, Event-Driven Architecture
+- Microservices: Service Discovery, API Gateway, Distributed Tracing
+
+## Security
+- Encryption: Symmetric, Asymmetric, Hashing
+- Common Vulnerabilities: SQL Injection, XSS, CSRF
+- Secure Coding: Input Validation, Output Encoding
+- Authentication vs Authorization
+- HTTPS and TLS/SSL
+
+## Software Engineering Best Practices
+- Version Control: Git, Branching Strategies
+- Code Review: Pull Requests, Feedback
+- Testing: Unit Tests, Integration Tests, End-to-End Tests
+- CI/CD: Continuous Integration, Continuous Deployment
+- Documentation: Code Comments, API Documentation
+
+## Advanced Topics
+- Concurrency: Threads, Processes, Async/Await
+- Caching Strategies: LRU Cache, Cache Coherence
+- Distributed Systems: CAP Theorem, Consensus Algorithms
+- Container Orchestration: Docker, Kubernetes
+- Cloud Services: AWS, GCP, Azure Basics

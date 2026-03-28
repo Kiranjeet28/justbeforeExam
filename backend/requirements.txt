@@ -12,3 +12,11 @@ tenacity
 requests
 youtube-transcript-api
 beautifulsoup4
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langchain-huggingface
+langgraph
+faiss-cpu
+tavily-python

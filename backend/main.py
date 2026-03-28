@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from google.api_core import exceptions as google_api_exceptions
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from youtube_transcript_api._errors import YouTubeTranscriptApiException
 from database import Base, engine, get_db
 from rag.config import ModelConfig
 from rag.processor import StudyMaterialEngine
+from rag.agent import run_agent
 from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
 from services import AIService
@@ -44,6 +46,11 @@ class GenerateV1Request(BaseModel):
         min_length=1,
         description="Raw text from user sources (transcripts, article extracts, pasted notes).",
     )
+
+
+class AgenticRagRequest(BaseModel):
+    topic: str = Field(..., min_length=1, description="Exam topic to prepare notes for")
+    thread_id: str | None = None  # Optional: session continuity
 
 
 @asynccontextmanager
@@ -431,6 +438,82 @@ def generate_cheat_sheet(payload: CheatSheetRequest, db: Session = Depends(get_d
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI service error: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}",
+        )
+
+
+@app.post("/api/agent/generate-notes-streaming")
+async def generate_notes_streaming(payload: AgenticRagRequest):
+    """
+    Stream exam notes generation with real-time status updates using the agentic RAG.
+    
+    Returns a streaming response with status updates like:
+    - "📋 Planning research strategy..."
+    - "🔍 Researching '[topic]'..."
+    - "⚡ Groq rate limited - Switched to Gemini..."
+    - "✓ Formatting complete"
+    
+    Final message contains the complete notes.
+    """
+    def generate_stream():
+        try:
+            # Run the agent
+            result = run_agent(payload.topic, payload.thread_id)
+            
+            # Stream status updates first
+            for status_msg in result.get("status_updates", []):
+                yield f"data: {{'status': '{status_msg}'}}\n\n"
+            
+            # Stream the final notes
+            yield f"data: {{'type': 'final', 'notes': {repr(result.get('notes', ''))}}}\n\n"
+            
+            # Stream metadata
+            yield f"data: {{'type': 'metadata', 'context_length': {len(result.get('context_data', ''))}, 'web_search_performed': {bool(result.get('web_research'))}}}\n\n"
+            
+        except Exception as e:
+            yield f"data: {{'error': '{str(e)}'}}\n\n"
+    
+    return StreamingResponse(generate_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/agent/generate-notes")
+def generate_notes_with_agent(payload: AgenticRagRequest) -> dict[str, object]:
+    """
+    Generate exam notes using the agentic RAG with:
+    - HuggingFace embeddings + FAISS vector store retrieval
+    - Groq LLM with intelligent Gemini fallback
+    - Multi-stage pipeline: Planner → Researcher → Writer → Formatter
+    
+    Returns:
+        Complete result including notes, status updates, and metadata
+    """
+    try:
+        result = run_agent(payload.topic, payload.thread_id)
+        
+        return {
+            "success": True,
+            "topic": result.get("topic"),
+            "notes": result.get("notes"),
+            "status_updates": result.get("status_updates", []),
+            "context_data": result.get("context_data", ""),
+            "web_research": result.get("web_research", ""),
+            "research_plan": result.get("research_plan", ""),
+            "draft_notes": result.get("draft_notes", ""),
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Agent error: {str(e)}",
         )
     except Exception as e:
         raise HTTPException(
