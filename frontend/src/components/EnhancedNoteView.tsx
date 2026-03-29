@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download, FileText, GitGraph, BookMarked, Copy, X } from "lucide-react";
 import { NotesView } from "./views";
-import { <CheatSheetView></CheatSheetView> } from "./views";
+import { CheatSheetView } from "./views";
 import { MindMapView } from "./views/MindMapView";
 
 export type ViewType = "notes" | "cheatsheet" | "mindmap";

@@ -150,6 +150,65 @@ class ArtifactTransformationService:
         
         return False
 
+    def _generate_mock_cheat_sheet(self, note_content: str) -> str:
+        """
+        Generate a fallback cheat sheet when API is unavailable.
+        Extracts key points from notes and formats as markdown.
+        
+        Args:
+            note_content: The original study notes
+            
+        Returns:
+            Markdown formatted cheat sheet
+        """
+        lines = note_content.split('\n')
+        key_points = [line.strip() for line in lines if line.strip() and len(line.strip()) > 10][:10]
+        
+        cheat_sheet = "# Study Cheat Sheet\n\n"
+        cheat_sheet += "## Key Points\n"
+        for i, point in enumerate(key_points, 1):
+            # Truncate long points
+            truncated = point[:80] + "..." if len(point) > 80 else point
+            cheat_sheet += f"- {truncated}\n"
+        
+        cheat_sheet += "\n## Quick Summary\n"
+        cheat_sheet += f"- Total topics covered: {len(key_points)}\n"
+        cheat_sheet += f"- Content length: {len(note_content)} characters\n"
+        cheat_sheet += "- Generated: Fallback mode (API unavailable)\n"
+        
+        return cheat_sheet
+
+    def _generate_mock_mind_map(self, note_content: str) -> dict:
+        """
+        Generate a fallback mind map structure when API is unavailable.
+        Creates a simple hierarchy based on note structure.
+        
+        Args:
+            note_content: The original study notes
+            
+        Returns:
+            Dictionary representing a mind map structure
+        """
+        lines = note_content.split('\n')
+        topics = [line.strip() for line in lines if line.strip()][:5]
+        
+        children = []
+        for topic in topics[1:]:  # Skip first line (usually title)
+            children.append({
+                "branch": topic[:50],  # Limit branch name length
+                "leafs": ["Key concept", "Supporting detail", "Example"]
+            })
+        
+        return {
+            "root": topics[0] if topics else "Study Notes",
+            "children": children if children else [
+                {
+                    "branch": "Main Topic",
+                    "leafs": ["Concept 1", "Concept 2", "Concept 3"]
+                }
+            ]
+        }
+
     def _call_qwen_model(self, prompt: str, max_tokens: int = 2000) -> str:
         """
         Call Qwen2.5-72B-Instruct model via HuggingFace API.
@@ -241,8 +300,12 @@ Generate the cheat sheet now:"""
                     return result
                 except Exception as fallback_error:
                     logger.error(f"Fallback model also failed: {str(fallback_error)}")
-                    raise RuntimeError(f"Both primary and fallback models failed: {str(e)}") from e
-            raise
+                    # Use mock as final fallback
+                    logger.warning("All API calls failed, using mock cheat sheet")
+                    return self._generate_mock_cheat_sheet(note_content)
+            # Use mock as final fallback
+            logger.warning("All API calls failed, using mock cheat sheet")
+            return self._generate_mock_cheat_sheet(note_content)
 
     def generate_mind_map(self, note_content: str) -> dict:
         """
@@ -351,7 +414,9 @@ Generate the mind map JSON now:"""
             }
         except Exception as e:
             logger.error(f"Failed to generate mind map: {str(e)}")
-            raise
+            # Use mock as final fallback
+            logger.warning("All API calls failed for mind map, using mock response")
+            return self._generate_mock_mind_map(note_content)
 
     def generate_study_artifacts(self, note_content: str) -> dict:
         """

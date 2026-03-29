@@ -116,7 +116,8 @@ def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict:
         # Success - return notes with metadata
         response = {
             "markdown": result["content"],
-            "engine": result["engine"],
+            "model": result["engine"],
+            "engine_used": result["engine"],
             "status": result["status"],
         }
         return response

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Trash2, Video, Globe, Loader2, X, Sparkles } from "lucide-react";
+import { Trash2, Video, Globe, Loader2, X, Sparkles, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import {
@@ -12,6 +12,7 @@ import {
 import { buildRagContextFromLinks } from "@/lib/buildRagContext";
 import { generateExamNotes, RateLimitedException } from "@/lib/generateExamNotes";
 import { RateLimitFallback } from "@/components/RateLimitFallback";
+import { TransformNotes } from "@/components/TransformNotes";
 
 interface WorkspaceProps {
   onSourcesChange?: (count: number) => void;
@@ -53,6 +54,7 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
   const [ragMarkdown, setRagMarkdown] = useState("");
   const [ragModel, setRagModel] = useState("");
   const [ragModalOpen, setRagModalOpen] = useState(false);
+  const [transformModalOpen, setTransformModalOpen] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<{ retryAfter: number; retryAt: string; message: string } | null>(null);
   const [pendingGeneration, setPendingGeneration] = useState<string | null>(null);
   const detectedType = useMemo(() => detectSourceType(input), [input]);
@@ -677,6 +679,17 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                 <div className="flex items-center gap-2">
                   <motion.button
                     type="button"
+                    onClick={() => setTransformModalOpen(true)}
+                    className="flex items-center gap-2 rounded-lg bg-linear-to-r from-purple-600 to-pink-600 px-3 py-2 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-purple-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Transform notes into cheat sheet and mind map"
+                  >
+                    <Wand2 size={16} />
+                    Transform
+                  </motion.button>
+                  <motion.button
+                    type="button"
                     onClick={() => {
                       const element = document.createElement("a");
                       const file = new Blob([ragMarkdown], { type: "text/plain" });
@@ -750,6 +763,45 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
             message={rateLimitError.message}
             onRetry={handleRateLimitRetry}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {transformModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-60 flex items-center justify-center bg-black/65 backdrop-blur-sm"
+            onClick={() => setTransformModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-slate-700 px-5 py-4">
+                <h2 className="text-lg font-bold text-slate-100">Transform Study Notes</h2>
+                <button
+                  type="button"
+                  onClick={() => setTransformModalOpen(false)}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+                  aria-label="Close"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <TransformNotes
+                  noteContent={ragMarkdown}
+                  onClose={() => setTransformModalOpen(false)}
+                  title="Generate Cheat Sheet & Mind Map"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

@@ -9,6 +9,15 @@ export type GenerateExamNotesResult = {
   engine_used: string;
 };
 
+type BackendResponse = {
+  markdown?: string;
+  engine?: string;
+  status?: string;
+  model?: string;
+  engine_used?: string;
+  error?: string;
+};
+
 export type RateLimitError = {
   isRateLimited: true;
   retry_after: number;
@@ -35,12 +44,8 @@ export async function generateExamNotes(content: string): Promise<GenerateExamNo
     body: JSON.stringify({ content }),
   });
 
-  const data = (await res.json().catch(() => ({}))) as {
+  const data = (await res.json().catch(() => ({}))) as BackendResponse & {
     detail?: unknown;
-    markdown?: string;
-    model?: string;
-    engine_used?: string;
-    error?: string;
     retry_after?: number;
     retry_at?: string;
   };
@@ -71,7 +76,7 @@ export async function generateExamNotes(content: string): Promise<GenerateExamNo
   }
   return {
     markdown: data.markdown,
-    model: data.model ?? "unknown",
-    engine_used: data.engine_used ?? "unknown",
+    model: data.model ?? data.engine ?? "unknown",
+    engine_used: data.engine_used ?? data.engine ?? "unknown",
   };
 }
