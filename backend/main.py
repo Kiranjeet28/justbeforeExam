@@ -17,6 +17,7 @@ from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
 from services import AIService
 from services.ai_service import RateLimitExceeded
+from services.artifact_service import ArtifactTransformationService
 from services.youtube_transcript_service import (
     fetch_youtube_transcript_bundle,
     transcript_api_user_message,
@@ -51,6 +52,14 @@ class GenerateV1Request(BaseModel):
 class AgenticRagRequest(BaseModel):
     topic: str = Field(..., min_length=1, description="Exam topic to prepare notes for")
     thread_id: str | None = None  # Optional: session continuity
+
+
+class TransformNotesRequest(BaseModel):
+    content: str = Field(
+        ...,
+        min_length=1,
+        description="Generated study notes to transform into artifacts",
+    )
 
 
 @asynccontextmanager
@@ -120,6 +129,64 @@ def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(e),
+        ) from e
+
+
+@app.post("/api/transform-notes")
+def transform_notes_to_artifacts(payload: TransformNotesRequest) -> dict[str, Any]:
+    """
+    Transform generated study notes into specialized artifacts:
+    
+    - Artifact A (Cheat Sheet): Bullet-pointed summary with LaTeX formulas
+    - Artifact B (Mind Map): Hierarchical JSON structure
+    
+    Uses Qwen2.5-72B-Instruct model for transformation.
+    """
+    try:
+        service = ArtifactTransformationService()
+        result = service.generate_study_artifacts(payload.content)
+        
+        if not result["success"]:
+            # Some or all artifacts failed
+            if result["metadata"]["errors"]:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "message": "Artifact generation partially failed",
+                        "errors": result["metadata"]["errors"],
+                        "cheat_sheet": result["cheat_sheet"],
+                        "mind_map": result["mind_map"],
+                    }
+                )
+        
+        return {
+            "success": True,
+            "artifacts": {
+                "cheat_sheet": result["cheat_sheet"],
+                "mind_map": result["mind_map"],
+            },
+            "metadata": result["metadata"],
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except HTTPException:
+        raise  # Re-raise HTTPException for partial failures
+    except RuntimeError as e:
+        # Check if it's a rate limit error
+        if "rate limited" in str(e).lower() or "429" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": str(e),
+                    "message": "Artifact transformation service rate limited. Please retry in a moment.",
+                }
+            ) from e
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Artifact transformation failed: {str(e)}",
         ) from e
 
 
