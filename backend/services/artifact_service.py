@@ -1,7 +1,7 @@
 """
 Artifact Transformation Service
-Converts generated study notes into specialized formats:
- Artifact Transformation Service (delegates to model_dispatch.py)
+Converts generated study notes into specialized formats.
+Delegates to model_dispatch.py for model routing.
 """
 
 import json
@@ -19,13 +19,15 @@ logger = logging.getLogger(__name__)
 def get_huggingface_headers(api_token: str) -> Dict[str, str]:
     """
     Helper function to format HuggingFace API headers with authorization.
-    
+
     Args:
         api_token: HuggingFace API token
-        
+
     Returns:
-        Dictionary of headers for HuggingFace API requests
+        Dictionary of headers
     """
+    if not api_token:
+        raise ValueError("HuggingFace API token is required")
     return {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json",
@@ -38,115 +40,106 @@ def call_huggingface_model(
     api_token: str,
     max_tokens: int = 2000,
     temperature: float = 0.7,
-    api_url: str = "https://api-inference.huggingface.co/v1/chat/completions",
 ) -> str:
     """
-    Generic helper function to call any HuggingFace model via Inference API.
-    
+    Generic HuggingFace Inference API caller.
+
     Args:
-        model_id: Model identifier (e.g., "Qwen/Qwen2.5-72B-Instruct")
+        model_id: HuggingFace model identifier
         prompt: The prompt to send to the model
         api_token: HuggingFace API token
         max_tokens: Maximum tokens in response
-        temperature: Sampling temperature (0.0-1.0)
-        api_url: HuggingFace API endpoint
-        
+        temperature: Sampling temperature
+
     Returns:
         Generated text from the model
-        
-    Raises:
-        ValueError: If API token is missing
-        RuntimeError: If API call fails
     """
-    if not api_token:
-        raise ValueError("HUGGINGFACE_API_TOKEN is not set")
-
+    url = f"https://api-inference.huggingface.co/models/{model_id}"
     headers = get_huggingface_headers(api_token)
     payload = {
-        "model": model_id,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "top_p": 0.9,
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": max_tokens,
+            "temperature": temperature,
+            "return_full_text": False,
+        },
     }
+    response = requests.post(url, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    result = response.json()
+    if isinstance(result, list) and result:
+        return result[0].get("generated_text", "")
+    raise ValueError(f"Unexpected response format: {result}")
 
-    try:
-        response = requests.post(
 
-        from model_dispatch import generateArtifacts
+class ArtifactTransformationService:
+    """Service for transforming notes into Mind Map JSON and Cheat Sheet Markdown."""
 
-        
-        for pattern in complex_patterns:
-            if re.search(pattern, note_content):
-                logger.info(f"Detected complex formula pattern: {pattern}")
-                return True
-        
-        # Check for high density of mathematical symbols
-        math_symbols = len(re.findall(r'[\^\√∫∑∏∞∂∇±≠≤≥≈~∈∉⊂⊃∩∪]', note_content))
-        if math_symbols > 10:
-            logger.info(f"High density of math symbols detected: {math_symbols}")
-            return True
-        
-        return False
+    def __init__(self):
+        self.api_token = os.getenv("HUGGINGFACE_API_TOKEN", "")
+        self.primary_model_id = "Qwen/Qwen2.5-72B-Instruct"
+        self.fallback_model_id = "mistralai/Mathstral-7B-v0.1"
 
-    def _generate_mock_cheat_sheet(self, note_content: str) -> str:
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _is_formula_too_complex(self, note_content: str) -> bool:
         """
-        Generate a fallback cheat sheet when API is unavailable.
-        Extracts key points from notes and formats as markdown.
-        
+        Heuristic: decide whether to route to the Mathstral fallback model
+        based on the density of mathematical content in the notes.
+
         Args:
             note_content: The original study notes
-            
+
         Returns:
-            Markdown formatted cheat sheet
+            True if complex formula handling is recommended
         """
-        lines = note_content.split('\n')
-        key_points = [line.strip() for line in lines if line.strip() and len(line.strip()) > 10][:10]
-        
-        cheat_sheet = "# Study Cheat Sheet\n\n"
-        cheat_sheet += "## Key Points\n"
-        for i, point in enumerate(key_points, 1):
-            # Truncate long points
-            truncated = point[:80] + "..." if len(point) > 80 else point
-            cheat_sheet += f"- {truncated}\n"
-        
-        cheat_sheet += "\n## Quick Summary\n"
-        cheat_sheet += f"- Total topics covered: {len(key_points)}\n"
-        cheat_sheet += f"- Content length: {len(note_content)} characters\n"
-        cheat_sheet += "- Generated: Fallback mode (API unavailable)\n"
-        
-        return cheat_sheet
+        formula_indicators = [r"\$\$", r"\\frac", r"\\int", r"\\sum", r"\\prod", r"\\lim"]
+        count = sum(len(re.findall(p, note_content)) for p in formula_indicators)
+        return count >= 3
 
     def _generate_mock_mind_map(self, note_content: str) -> dict:
         """
-        Generate a fallback mind map structure when API is unavailable.
+        Generate a fallback mind map structure when all API calls are unavailable.
         Creates a simple hierarchy based on note structure.
-        
+
         Args:
             note_content: The original study notes
-            
+
         Returns:
             Dictionary representing a mind map structure
         """
-        lines = note_content.split('\n')
+        lines = note_content.split("\n")
         topics = [line.strip() for line in lines if line.strip()][:5]
-        
+
         children = []
         for topic in topics[1:]:  # Skip first line (usually title)
             children.append({
-                "branch": topic[:50],  # Limit branch name length
-                "leafs": ["Key concept", "Supporting detail", "Example"]
+                "branch": topic[:50],
+                "leafs": ["Key concept", "Supporting detail", "Example"],
             })
-        
+
         return {
             "root": topics[0] if topics else "Study Notes",
             "children": children if children else [
-                {
-                    "branch": "Main Topic",
-                    "leafs": ["Concept 1", "Concept 2", "Concept 3"]
-                }
-            ]
+                {"branch": "Main Topic", "leafs": ["Concept 1", "Concept 2", "Concept 3"]}
+            ],
         }
+
+    def _generate_mock_cheat_sheet(self, note_content: str) -> str:
+        """
+        Generate a basic cheat sheet when all API calls fail.
+
+        Args:
+            note_content: The original study notes
+
+        Returns:
+            Simple markdown cheat sheet
+        """
+        lines = [l.strip() for l in note_content.split("\n") if l.strip()]
+        bullets = "\n".join(f"- {line}" for line in lines[:20])
+        return f"# Cheat Sheet\n\n{bullets}"
 
     def _call_qwen_model(self, prompt: str, max_tokens: int = 2000) -> str:
         """
@@ -172,11 +165,11 @@ def call_huggingface_model(
     def _call_mathstral_fallback(self, prompt: str, max_tokens: int = 2000) -> str:
         """
         Call Mathstral-7B-v0.1 model as fallback for complex formula extraction.
-        
+
         Args:
             prompt: The prompt to send to the model
             max_tokens: Maximum tokens in response
-            
+
         Returns:
             Generated text from the fallback model
         """
@@ -188,8 +181,12 @@ def call_huggingface_model(
             prompt=prompt,
             api_token=self.api_token,
             max_tokens=max_tokens,
-            temperature=0.5,  # Lower temperature for more consistent formula output
+            temperature=0.5,
         )
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def generate_cheat_sheet(self, note_content: str) -> str:
         """
@@ -202,9 +199,8 @@ def call_huggingface_model(
         Returns:
             Formatted cheat sheet as markdown
         """
-        # Check if we should use fallback for complex formulas
         use_fallback = self._is_formula_too_complex(note_content)
-        
+
         prompt = f"""Convert the following study notes into a concise cheat sheet format.
 
 Requirements:
@@ -225,24 +221,16 @@ Generate the cheat sheet now:"""
         try:
             if use_fallback:
                 logger.info("Using Mathstral fallback for complex formula extraction in cheat sheet")
-                result = self._call_mathstral_fallback(prompt, max_tokens=3000)
-            else:
-                result = self._call_qwen_model(prompt, max_tokens=3000)
-            return result
+                return self._call_mathstral_fallback(prompt, max_tokens=3000)
+            return self._call_qwen_model(prompt, max_tokens=3000)
         except Exception as e:
-            logger.error(f"Failed to generate cheat sheet (primary model): {str(e)}")
-            # If primary fails and we haven't tried fallback yet, try fallback
+            logger.error(f"Primary model failed for cheat sheet: {e}")
             if not use_fallback:
                 try:
-                    logger.info("Primary model failed, attempting Mathstral fallback")
-                    result = self._call_mathstral_fallback(prompt, max_tokens=3000)
-                    return result
+                    logger.info("Attempting Mathstral fallback after primary failure")
+                    return self._call_mathstral_fallback(prompt, max_tokens=3000)
                 except Exception as fallback_error:
-                    logger.error(f"Fallback model also failed: {str(fallback_error)}")
-                    # Use mock as final fallback
-                    logger.warning("All API calls failed, using mock cheat sheet")
-                    return self._generate_mock_cheat_sheet(note_content)
-            # Use mock as final fallback
+                    logger.error(f"Fallback model also failed: {fallback_error}")
             logger.warning("All API calls failed, using mock cheat sheet")
             return self._generate_mock_cheat_sheet(note_content)
 
@@ -257,9 +245,8 @@ Generate the cheat sheet now:"""
         Returns:
             JSON object with hierarchical structure
         """
-        # Check if we should use fallback for complex formulas
         use_fallback = self._is_formula_too_complex(note_content)
-        
+
         prompt = f"""Convert the following study notes into a hierarchical mind map JSON structure.
 
 Requirements:
@@ -290,70 +277,44 @@ Study Notes:
 
 Generate the mind map JSON now:"""
 
+        def _parse_mind_map_result(raw: str) -> dict:
+            raw = raw.strip()
+            if raw.startswith("```json"):
+                raw = raw[7:]
+            elif raw.startswith("```"):
+                raw = raw[3:]
+            if raw.endswith("```"):
+                raw = raw[:-3]
+            raw = raw.strip()
+            data = json.loads(raw)
+            data.setdefault("root", "Study Notes")
+            data.setdefault("children", [])
+            return data
+
         try:
             if use_fallback:
-                logger.info("Using Mathstral fallback for complex formula extraction in mind map")
+                logger.info("Using Mathstral fallback for mind map generation")
                 result = self._call_mathstral_fallback(prompt, max_tokens=2500)
             else:
                 result = self._call_qwen_model(prompt, max_tokens=2500)
-            
-            # Clean up the response - remove markdown code blocks if present
-            result = result.strip()
-            if result.startswith("```json"):
-                result = result[7:]  # Remove ```json
-            elif result.startswith("```"):
-                result = result[3:]  # Remove ```
-            
-            if result.endswith("```"):
-                result = result[:-3]  # Remove trailing ```
-            
-            result = result.strip()
-            
-            # Try to parse as JSON
-            mind_map = json.loads(result)
-            
-            # Validate structure
-            if "root" not in mind_map:
-                raise ValueError("Mind map missing 'root' field")
-            
-            if "children" not in mind_map:
-                mind_map["children"] = []
-            
-            return mind_map
+            return _parse_mind_map_result(result)
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse mind map JSON: {str(e)}")
-            # If parsing failed and we haven't tried fallback yet, try fallback
+            logger.error(f"Failed to parse mind map JSON: {e}")
             if not use_fallback:
                 try:
                     logger.info("JSON parsing failed, attempting Mathstral fallback")
                     result = self._call_mathstral_fallback(prompt, max_tokens=2500)
-                    result = result.strip()
-                    if result.startswith("```"):
-                        result = result[result.find('\n')+1:result.rfind('```')]
-                    mind_map = json.loads(result)
-                    
-                    if "root" not in mind_map:
-                        mind_map["root"] = "Study Notes"
-                    if "children" not in mind_map:
-                        mind_map["children"] = []
-                    
-                    return mind_map
+                    return _parse_mind_map_result(result)
                 except Exception as fallback_error:
-                    logger.error(f"Fallback also failed to parse: {str(fallback_error)}")
-            
-            # Return a basic structure if parsing fails
+                    logger.error(f"Fallback also failed to parse: {fallback_error}")
             return {
                 "root": "Study Notes",
-                "children": [{
-                    "branch": "Content",
-                    "leafs": [note_content[:100] + "..."]
-                }],
-                "error": f"JSON parsing failed: {str(e)}"
+                "children": [{"branch": "Content", "leafs": [note_content[:100] + "..."]}],
+                "error": f"JSON parsing failed: {e}",
             }
         except Exception as e:
-            logger.error(f"Failed to generate mind map: {str(e)}")
-            # Use mock as final fallback
+            logger.error(f"Failed to generate mind map: {e}")
             logger.warning("All API calls failed for mind map, using mock response")
             return self._generate_mock_mind_map(note_content)
 
@@ -373,10 +334,8 @@ Generate the mind map JSON now:"""
                 "metadata": {
                     "input_length": int,
                     "cheat_sheet_length": int,
-                    "model_used": {
-                        "cheat_sheet": "Qwen" or "Mathstral",
-                        "mind_map": "Qwen" or "Mathstral"
-                    },
+                    "has_complex_formulas": bool,
+                    "model_used": {"cheat_sheet": str, "mind_map": str},
                     "errors": []
                 }
             }
@@ -384,8 +343,8 @@ Generate the mind map JSON now:"""
         if not note_content or not note_content.strip():
             raise ValueError("Note content cannot be empty")
 
-        # Determine if complex formulas are present
         has_complex_formulas = self._is_formula_too_complex(note_content)
+        model_label = "Mathstral" if has_complex_formulas else "Qwen"
 
         result = {
             "success": False,
@@ -395,12 +354,9 @@ Generate the mind map JSON now:"""
                 "input_length": len(note_content),
                 "cheat_sheet_length": 0,
                 "has_complex_formulas": has_complex_formulas,
-                "model_used": {
-                    "cheat_sheet": None,
-                    "mind_map": None,
-                },
-                "errors": []
-            }
+                "model_used": {"cheat_sheet": None, "mind_map": None},
+                "errors": [],
+            },
         }
 
         # Generate cheat sheet
@@ -409,16 +365,10 @@ Generate the mind map JSON now:"""
             cheat_sheet = self.generate_cheat_sheet(note_content)
             result["cheat_sheet"] = cheat_sheet
             result["metadata"]["cheat_sheet_length"] = len(cheat_sheet)
-            
-            # Determine which model was used
-            if has_complex_formulas:
-                result["metadata"]["model_used"]["cheat_sheet"] = "Mathstral"
-            else:
-                result["metadata"]["model_used"]["cheat_sheet"] = "Qwen"
-            
+            result["metadata"]["model_used"]["cheat_sheet"] = model_label
             logger.info(f"Cheat sheet generated: {len(cheat_sheet)} characters")
         except Exception as e:
-            error_msg = f"Cheat sheet generation failed: {str(e)}"
+            error_msg = f"Cheat sheet generation failed: {e}"
             logger.error(error_msg)
             result["metadata"]["errors"].append(error_msg)
 
@@ -427,20 +377,12 @@ Generate the mind map JSON now:"""
             logger.info("Generating mind map...")
             mind_map = self.generate_mind_map(note_content)
             result["mind_map"] = mind_map
-            
-            # Determine which model was used
-            if has_complex_formulas:
-                result["metadata"]["model_used"]["mind_map"] = "Mathstral"
-            else:
-                result["metadata"]["model_used"]["mind_map"] = "Qwen"
-            
+            result["metadata"]["model_used"]["mind_map"] = model_label
             logger.info(f"Mind map generated with root: {mind_map.get('root', 'Unknown')}")
         except Exception as e:
-            error_msg = f"Mind map generation failed: {str(e)}"
+            error_msg = f"Mind map generation failed: {e}"
             logger.error(error_msg)
             result["metadata"]["errors"].append(error_msg)
 
-        # Mark as success if at least one artifact was generated
         result["success"] = result["cheat_sheet"] is not None or result["mind_map"] is not None
-
         return result
