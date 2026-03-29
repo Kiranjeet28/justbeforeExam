@@ -25,17 +25,7 @@ class RateLimitExceeded(Exception):
     pass
 
 
-{chunks_text}
 
-Based on the study materials above, generate comprehensive study notes with the following structure:
-
-## 📚 Key Concepts
-
-## 💡 Detailed Explanations
-
-## 🎯 Summary
-
-Please format the response in clean Markdown."""
 
 # New: Use model_dispatch for artifact generation
 import sys
