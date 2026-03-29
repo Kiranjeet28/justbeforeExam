@@ -155,14 +155,14 @@ Format as markdown with clear sections."""
             generator = MultiModelNotesGenerator()
             result = generator.generate_full_notes(user_input)
 
-            state["draft_notes"] = result["notes"]
-            state["engine_used"] = result["engine_used"]
+            state["draft_notes"] = result["content"]
+            state["engine_used"] = result["engine"]
 
-            if result["engine_used"] == "Groq":
+            if result["engine"] == "Groq":
                 state["status_updates"].append("✓ Draft generated with Groq")
-            elif result["engine_used"] == "Groq + Gemini":
+            elif result["engine"] == "Groq+Gemini":
                 state["status_updates"].append("⚡ Groq truncated - Continued with Gemini")
-            elif result["engine_used"] == "Gemini":
+            elif result["engine"] == "Gemini":
                 state["status_updates"].append("⚡ Groq rate limited (429) - Switched to Gemini")
 
             state["status_updates"].append("✓ Notes generated")

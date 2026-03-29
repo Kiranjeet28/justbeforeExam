@@ -84,15 +84,15 @@ def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict[str, str]:
     
     - STEP 1: Try Groq (Llama 3.3 70B)
     - STEP 2: If Groq fails (429 rate limit or length exceeded), switch to Gemini
-    - STEP 3: Return notes with engine_used metadata
+    - STEP 3: Return notes with engine metadata
     """
     try:
         generator = MultiModelNotesGenerator()
         result = generator.generate_full_notes(payload.content)
         return {
-            "markdown": result["notes"],
-            "engine_used": result["engine_used"],
-            "model": ModelConfig.PRIMARY_MODEL,
+            "markdown": result["content"],
+            "engine": result["engine"],
+            "status": result["status"],
         }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
