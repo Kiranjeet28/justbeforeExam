@@ -10,7 +10,8 @@ import {
   type ParsedLink,
 } from "@/lib/parseLinkContent";
 import { buildRagContextFromLinks } from "@/lib/buildRagContext";
-import { generateExamNotes } from "@/lib/generateExamNotes";
+import { generateExamNotes, RateLimitedException } from "@/lib/generateExamNotes";
+import { RateLimitFallback } from "@/components/RateLimitFallback";
 
 interface WorkspaceProps {
   onSourcesChange?: (count: number) => void;
@@ -52,6 +53,8 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
   const [ragMarkdown, setRagMarkdown] = useState("");
   const [ragModel, setRagModel] = useState("");
   const [ragModalOpen, setRagModalOpen] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState<{ retryAfter: number; retryAt: string; message: string } | null>(null);
+  const [pendingGeneration, setPendingGeneration] = useState<string | null>(null);
   const detectedType = useMemo(() => detectSourceType(input), [input]);
   const sortedLinks = useMemo(() => sortParsedLinksByType(linkSources), [linkSources]);
   const selectedLink = sortedLinks.find((l) => l.id === selectedLinkId) ?? sortedLinks[0] ?? null;
@@ -138,12 +141,33 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
       setRagMarkdown(markdown);
       setRagModel(model);
       setRagModalOpen(true);
+      setRateLimitError(null); // Clear any previous rate limit errors
     } catch (err) {
       console.error("❌ Error generating exam notes:", err);
+
+      // Handle rate limit error specifically
+      if (err instanceof RateLimitedException) {
+        console.warn(`⏱️ Rate limited. Retry after ${err.retry_after}s`);
+        setRateLimitError({
+          retryAfter: err.retry_after,
+          retryAt: err.retry_at,
+          message: err.message,
+        });
+        setPendingGeneration(buildRagContextFromLinks(linkSources));
+        setIsRagGenerating(false);
+        return;
+      }
+
       setError(err instanceof Error ? err.message : "Failed to generate exam notes.");
     } finally {
       setIsRagGenerating(false);
     }
+  };
+
+  const handleRateLimitRetry = async () => {
+    if (!pendingGeneration) return;
+    setRateLimitError(null);
+    await handleGenerateExamNotes();
   };
 
 
@@ -715,6 +739,17 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {rateLimitError && (
+          <RateLimitFallback
+            retryAfter={rateLimitError.retryAfter}
+            retryAt={rateLimitError.retryAt}
+            message={rateLimitError.message}
+            onRetry={handleRateLimitRetry}
+          />
         )}
       </AnimatePresence>
     </>

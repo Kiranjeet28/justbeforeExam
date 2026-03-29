@@ -149,7 +149,18 @@ class HuggingFaceRAG:
         raise RuntimeError("All Hugging Face models unavailable. Using mock response.")
     
     
-    def generate_notes_from_chunks(self, chunks: list[str], topic: str = "") -> str:
+    def generate_with_rag(self, prompt: str) -> str:
+        """
+        Generate content with RAG using Mistral/HuggingFace.
+        Used as fallback when Groq rate limits.
+        """
+        try:
+            return self._call_mistral(prompt)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                error_msg = f"HuggingFace rate limit (429): {str(e)}"
+                raise RuntimeError(error_msg) from e
+            raise
         """Generate study notes from text chunks using Mistral"""
         if not chunks:
             raise ValueError("No chunks provided")

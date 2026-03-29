@@ -78,24 +78,44 @@ def health_check() -> dict[str, str]:
 
 
 @app.post("/api/v1/generate")
-def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict[str, str]:
+def api_v1_generate_study_notes(payload: GenerateV1Request) -> dict:
     """
-    Generate Markdown exam notes from source text using Groq (primary) with Gemini fallback.
+    Generate Markdown exam notes from source text with three-tier fallback:
     
-    - STEP 1: Try Groq (Llama 3.3 70B)
-    - STEP 2: If Groq fails (429 rate limit or length exceeded), switch to Gemini
-    - STEP 3: Return notes with engine metadata
+    TIER 1 (Primary): Groq
+    TIER 2 (Fallback): HuggingFace (if Groq rate limited)
+    TIER 3 (Error): Return error with countdown timer
+    
+    Returns rate limit info if all providers are exhausted.
     """
     try:
         generator = MultiModelNotesGenerator()
         result = generator.generate_full_notes(payload.content)
-        return {
+        
+        # If rate limited, return 429 with retry info
+        if result["status"] == "rate_limited":
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": result["error"],
+                    "message": result["content"],
+                    "retry_after": result["retry_after"],
+                    "retry_at": result["retry_at"],
+                }
+            )
+        
+        # Success - return notes with metadata
+        response = {
             "markdown": result["content"],
             "engine": result["engine"],
             "status": result["status"],
         }
+        return response
+        
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except HTTPException:
+        raise  # Re-raise HTTPException for rate limits
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

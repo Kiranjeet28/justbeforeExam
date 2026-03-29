@@ -9,18 +9,52 @@ export type GenerateExamNotesResult = {
   engine_used: string;
 };
 
+export type RateLimitError = {
+  isRateLimited: true;
+  retry_after: number;
+  retry_at: string;
+  message: string;
+  error: string;
+};
+
+export class RateLimitedException extends Error {
+  constructor(
+    public retry_after: number,
+    public retry_at: string,
+    public message: string
+  ) {
+    super(`Rate limited. Retry after ${retry_after}s`);
+    this.name = "RateLimitedException";
+  }
+}
+
 export async function generateExamNotes(content: string): Promise<GenerateExamNotesResult> {
   const res = await fetch(`${API_BASE}/api/v1/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
+
   const data = (await res.json().catch(() => ({}))) as {
     detail?: unknown;
     markdown?: string;
     model?: string;
     engine_used?: string;
+    error?: string;
+    retry_after?: number;
+    retry_at?: string;
   };
+
+  // Handle rate limit (429) responses
+  if (res.status === 429) {
+    const detailObj = typeof data.detail === "object" ? (data.detail as any) : null;
+    const retryAfter = detailObj?.retry_after || data.retry_after || 60;
+    const retryAt = detailObj?.retry_at || data.retry_at || new Date(Date.now() + retryAfter * 1000).toISOString();
+    const message = detailObj?.message || data.detail || "Rate limited. Please try again later.";
+
+    throw new RateLimitedException(retryAfter, retryAt, message as string);
+  }
+
   if (!res.ok) {
     const detail = data.detail;
     const msg =
