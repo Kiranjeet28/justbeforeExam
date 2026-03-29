@@ -250,15 +250,15 @@ class MultiModelNotesGenerator:
         Generate complete exam notes with three-tier fallback:
         
         TIER 1 (Primary): Groq
-        TIER 2 (Fallback): HuggingFace (if Groq rate limited)
-        TIER 3 (Error): Return error with countdown timer (if both rate limited)
+        TIER 2 (Fallback): Gemini (if Groq rate limited or fails)
+        TIER 3 (Ultimate Fallback): HuggingFace (if both Groq and Gemini rate limited or fail)
 
         Args:
             user_input: Raw text content from sources
 
         Returns:
             {
-                "engine": "Groq" | "HuggingFace" | "Error",
+                "engine": "Groq" | "Gemini" | "HuggingFace" | "Error",
                 "content": generated notes,
                 "status": "completed" | "rate_limited",
                 "retry_after": seconds_to_retry (only if rate_limited),
@@ -295,45 +295,93 @@ class MultiModelNotesGenerator:
             }
 
         except RateLimitError as groq_error:
-            logger.warning(f"Groq rate limited (429). Attempting HuggingFace fallback: {str(groq_error)}")
+            logger.warning(f"Groq rate limited (429). Attempting Gemini fallback: {str(groq_error)}")
             
-            # TIER 2: Try HuggingFace
+            # TIER 2: Try Gemini
             try:
-                logger.info("Attempting to generate notes with HuggingFace...")
-                huggingface_output = self._call_huggingface(full_prompt)
-                engine_used = "HuggingFace"
+                logger.info("Attempting to generate notes with Gemini...")
+                gemini_output = self._call_gemini(full_prompt)
+                engine_used = "Gemini"
                 
                 return {
                     "engine": engine_used,
-                    "content": huggingface_output,
+                    "content": gemini_output,
                     "status": "completed",
                 }
             
-            except RateLimitError as hf_error:
-                logger.error(f"HuggingFace also rate limited (429): {str(hf_error)}")
+            except RateLimitError as gemini_error:
+                logger.warning(f"Gemini also rate limited (429). Attempting HuggingFace fallback: {str(gemini_error)}")
                 
-                # TIER 3: Both failed - return error with countdown
-                retry_after = hf_error.retry_after or groq_error.retry_after or 60
-                retry_at = (datetime.now() + timedelta(seconds=retry_after)).isoformat()
+                # TIER 3: Try HuggingFace
+                try:
+                    logger.info("Attempting to generate notes with HuggingFace...")
+                    huggingface_output = self._call_huggingface(full_prompt)
+                    engine_used = "HuggingFace"
+                    
+                    return {
+                        "engine": engine_used,
+                        "content": huggingface_output,
+                        "status": "completed",
+                    }
                 
-                logger.error(f"All AI providers rate limited. Retry after {retry_after} seconds at {retry_at}")
-                
-                return {
-                    "engine": "Error",
-                    "content": f"All AI providers are rate limited. Please try again in {retry_after} seconds.",
-                    "status": "rate_limited",
-                    "retry_after": retry_after,
-                    "retry_at": retry_at,
-                    "error": f"Rate limit exceeded on all providers. {str(hf_error)}"
-                }
-            
-            except Exception as hf_error:
-                logger.error(f"HuggingFace error: {str(hf_error)}")
-                
-                # If HuggingFace fails for other reason, check if it was rate limited
-                if _is_429_or_rate_limit(hf_error):
-                    retry_after = groq_error.retry_after or 60
+                except RateLimitError as hf_error:
+                    logger.error(f"HuggingFace also rate limited (429): {str(hf_error)}")
+                    
+                    # All three failed - return error with countdown
+                    retry_after = hf_error.retry_after or gemini_error.retry_after or groq_error.retry_after or 60
                     retry_at = (datetime.now() + timedelta(seconds=retry_after)).isoformat()
+                    
+                    logger.error(f"All AI providers rate limited. Retry after {retry_after} seconds at {retry_at}")
+                    
+                    return {
+                        "engine": "Error",
+                        "content": f"All AI providers are rate limited. Please try again in {retry_after} seconds.",
+                        "status": "rate_limited",
+                        "retry_after": retry_after,
+                        "retry_at": retry_at,
+                        "error": f"Rate limit exceeded on all providers. {str(hf_error)}"
+                    }
+                
+                except Exception as hf_error:
+                    logger.error(f"HuggingFace error: {str(hf_error)}")
+                    
+                    # If HuggingFace fails for other reason, check if it was rate limited
+                    if _is_429_or_rate_limit(hf_error):
+                        retry_after = gemini_error.retry_after or groq_error.retry_after or 60
+                        retry_at = (datetime.now() + timedelta(seconds=retry_after)).isoformat()
+                        return {
+                            "engine": "Error",
+                            "content": f"All AI providers are rate limited. Please try again in {retry_after} seconds.",
+                            "status": "rate_limited",
+                            "retry_after": retry_after,
+                            "retry_at": retry_at,
+                            "error": f"Rate limit exceeded. {str(hf_error)}"
+                        }
+                    else:
+                        # HuggingFace failed but not due to rate limit
+                        logger.error(f"HuggingFace error (not rate limited): {str(hf_error)}")
+                        raise
+            
+            except Exception as gemini_error:
+                logger.warning(f"Gemini error: {str(gemini_error)}. Attempting HuggingFace fallback...")
+                
+                # TIER 3: Try HuggingFace as fallback for non-rate-limit errors
+                try:
+                    logger.info("Attempting to generate notes with HuggingFace...")
+                    huggingface_output = self._call_huggingface(full_prompt)
+                    engine_used = "HuggingFace"
+                    
+                    return {
+                        "engine": engine_used,
+                        "content": huggingface_output,
+                        "status": "completed",
+                    }
+                
+                except RateLimitError as hf_error:
+                    logger.error(f"HuggingFace rate limited (429): {str(hf_error)}")
+                    retry_after = hf_error.retry_after or groq_error.retry_after or 60
+                    retry_at = (datetime.now() + timedelta(seconds=retry_after)).isoformat()
+                    
                     return {
                         "engine": "Error",
                         "content": f"All AI providers are rate limited. Please try again in {retry_after} seconds.",
@@ -342,13 +390,42 @@ class MultiModelNotesGenerator:
                         "retry_at": retry_at,
                         "error": f"Rate limit exceeded. {str(hf_error)}"
                     }
-                else:
-                    # HuggingFace failed but not due to rate limit
-                    logger.error(f"HuggingFace error (not rate limited): {str(hf_error)}")
+                
+                except Exception as hf_error:
+                    logger.error(f"HuggingFace error: {str(hf_error)}")
                     raise
 
 
+
         except Exception as e:
-            # Groq failed for non-rate-limit reason
-            logger.error(f"Groq error (not rate limited): {str(e)}")
-            raise
+            # Groq failed for non-rate-limit reason, try Gemini
+            logger.warning(f"Groq error (not rate limited): {str(e)}. Attempting Gemini fallback...")
+            
+            try:
+                logger.info("Attempting to generate notes with Gemini...")
+                gemini_output = self._call_gemini(full_prompt)
+                engine_used = "Gemini"
+                
+                return {
+                    "engine": engine_used,
+                    "content": gemini_output,
+                    "status": "completed",
+                }
+            
+            except Exception as gemini_error:
+                logger.warning(f"Gemini error: {str(gemini_error)}. Attempting HuggingFace fallback...")
+                
+                try:
+                    logger.info("Attempting to generate notes with HuggingFace...")
+                    huggingface_output = self._call_huggingface(full_prompt)
+                    engine_used = "HuggingFace"
+                    
+                    return {
+                        "engine": engine_used,
+                        "content": huggingface_output,
+                        "status": "completed",
+                    }
+                
+                except Exception as hf_error:
+                    logger.error(f"All three providers failed: Groq: {str(e)}, Gemini: {str(gemini_error)}, HuggingFace: {str(hf_error)}")
+                    raise RuntimeError(f"All AI providers failed. Last error: {str(hf_error)}") from hf_error

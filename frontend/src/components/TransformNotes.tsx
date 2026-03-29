@@ -45,8 +45,13 @@ export function TransformNotes({ noteContent, onClose, title = "Transform Notes"
             }
 
             if (!response.ok) {
-                const errorData = await response.json();
-                setError(errorData.detail?.message || `Error: ${response.statusText}`);
+                try {
+                    const errorData = await response.json();
+                    setError(errorData.detail?.message || `Error: ${response.statusText}`);
+                } catch {
+                    // If response body is not JSON (e.g., HTML error page)
+                    setError(`Error: ${response.status} ${response.statusText}`);
+                }
                 return;
             }
 
@@ -107,8 +112,8 @@ export function TransformNotes({ noteContent, onClose, title = "Transform Notes"
                     onClick={handleTransform}
                     disabled={isTransforming}
                     className={`flex items-center gap-2 rounded-lg px-4 py-2 font-semibold transition ${isTransforming
-                            ? "cursor-not-allowed bg-gray-700 text-gray-500"
-                            : "bg-purple-600 text-white hover:bg-purple-700"
+                        ? "cursor-not-allowed bg-gray-700 text-gray-500"
+                        : "bg-purple-600 text-white hover:bg-purple-700"
                         }`}
                 >
                     {isTransforming ? "Transforming..." : "Transform Notes"}
@@ -125,8 +130,8 @@ export function TransformNotes({ noteContent, onClose, title = "Transform Notes"
                     onClick={() => setActiveTab("cheat_sheet")}
                     disabled={!artifacts.cheat_sheet}
                     className={`px-4 py-2 font-semibold transition ${activeTab === "cheat_sheet"
-                            ? "border-b-2 border-purple-400 text-purple-300"
-                            : "text-gray-400 hover:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        ? "border-b-2 border-purple-400 text-purple-300"
+                        : "text-gray-400 hover:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
                         }`}
                 >
                     Cheat Sheet
@@ -135,8 +140,8 @@ export function TransformNotes({ noteContent, onClose, title = "Transform Notes"
                     onClick={() => setActiveTab("mind_map")}
                     disabled={!artifacts.mind_map}
                     className={`px-4 py-2 font-semibold transition ${activeTab === "mind_map"
-                            ? "border-b-2 border-purple-400 text-purple-300"
-                            : "text-gray-400 hover:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        ? "border-b-2 border-purple-400 text-purple-300"
+                        : "text-gray-400 hover:text-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
                         }`}
                 >
                     Mind Map
@@ -239,8 +244,8 @@ export function TransformNotes({ noteContent, onClose, title = "Transform Notes"
                 onClick={handleTransform}
                 disabled={isTransforming}
                 className={`w-full rounded-lg px-4 py-2 font-semibold transition ${isTransforming
-                        ? "cursor-not-allowed bg-gray-700 text-gray-500"
-                        : "bg-purple-600 text-white hover:bg-purple-700"
+                    ? "cursor-not-allowed bg-gray-700 text-gray-500"
+                    : "bg-purple-600 text-white hover:bg-purple-700"
                     }`}
             >
                 {isTransforming ? "Transforming..." : "Transform Again"}

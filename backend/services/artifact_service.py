@@ -1,10 +1,7 @@
 """
 Artifact Transformation Service
 Converts generated study notes into specialized formats:
-- Cheat Sheet: Bullet points with LaTeX formulas
-- Mind Map: JSON hierarchy structure
-
-Includes fallback to Mathstral model for complex formula extraction.
+ Artifact Transformation Service (delegates to model_dispatch.py)
 """
 
 import json
@@ -75,67 +72,9 @@ def call_huggingface_model(
 
     try:
         response = requests.post(
-            api_url,
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
-        response.raise_for_status()
 
-        result = response.json()
-        if "choices" in result and len(result["choices"]) > 0:
-            return result["choices"][0]["message"]["content"]
-        else:
-            raise RuntimeError(f"Unexpected response format: {result}")
+        from model_dispatch import generateArtifacts
 
-    except requests.exceptions.HTTPError as e:
-        if e.response is not None and e.response.status_code == 429:
-            raise RuntimeError(f"HuggingFace API rate limited (429): {str(e)}") from e
-        status_code = e.response.status_code if e.response is not None else "Unknown"
-        raise RuntimeError(f"HuggingFace API error ({status_code}): {str(e)}") from e
-    except Exception as e:
-        logger.error(f"Error calling HuggingFace model: {str(e)}")
-        raise RuntimeError(f"Failed to call model: {str(e)}") from e
-
-
-class ArtifactTransformationService:
-    """Service for transforming notes into specialized study artifacts"""
-
-    def __init__(self):
-        """Initialize with HuggingFace API for Qwen model and Mathstral fallback"""
-        self.api_token: Optional[str] = os.getenv("HUGGINGFACE_API_TOKEN")
-        if not self.api_token:
-            logger.warning("HUGGINGFACE_API_TOKEN not set - artifact generation will be limited")
-
-        # Primary model for general artifact generation
-        self.primary_model_id = "Qwen/Qwen2.5-72B-Instruct"
-        # Fallback model for complex formula extraction
-        self.fallback_model_id = "mistralai/Mathstral-7B-v0.1"
-        self.api_url = f"https://api-inference.huggingface.co/v1/chat/completions"
-
-    def _is_formula_too_complex(self, note_content: str) -> bool:
-        """
-        Detect if formula extraction might be too complex for primary model.
-        
-        Args:
-            note_content: The note content to analyze
-            
-        Returns:
-            True if content appears to have complex formulas
-        """
-        # Indicators of complex formulas
-        complex_patterns = [
-            r'\\\[.*?\\\]',  # Display math with \[ \]
-            r'\$\$.*?\$\$',  # Block math with $$ $$
-            r'\\begin\{equation\}',  # LaTeX equation environment
-            r'\\begin\{align\}',  # LaTeX align environment
-            r'\\int',  # Integrals
-            r'\\sum',  # Summations
-            r'\\frac\{',  # Fractions
-            r'\\sqrt\{',  # Roots
-            r'\\matrix',  # Matrices
-            r'\\begin\{array\}',  # Array structures
-        ]
         
         for pattern in complex_patterns:
             if re.search(pattern, note_content):

@@ -25,172 +25,31 @@ class RateLimitExceeded(Exception):
     pass
 
 
-class HuggingFaceRAG:
-    """Hugging Face RAG implementation using available open models"""
-    
-    def __init__(self):
-        self.api_token = os.getenv("HUGGINGFACE_API_TOKEN")
-        if not self.api_token:
-            raise ValueError("HUGGINGFACE_API_TOKEN environment variable is not set")
-        
-        # List of models to try, in order of preference
-        self.model_candidates = [
-            "mistralai/Mistral-7B-Instruct-v0.3",
-            "mistralai/Mistral-7B-Instruct-v0.2",
-            "HuggingFaceH4/zephyr-7b-beta",
-            "OpenAssistant/oasst-sft-4-pythia-12b-epoch-3.5",
-        ]
-        
-        self.api_token = os.getenv("HUGGINGFACE_API_TOKEN")
-        self.headers = {"Authorization": f"Bearer {self.api_token}"}
-        self.chunk_size = 1000
-        self.model_id = self.model_candidates[0]  # Default to first model
-    
-    def _get_model_url(self, model_id: str = None) -> str:
-        """Get API URL for a model"""
-        if model_id is None:
-            model_id = self.model_id
-        return f"https://api-inference.huggingface.co/models/{model_id}"
-    
-    def _extract_keywords(self, text: str, num_keywords: int = 10) -> list[str]:
-        """Extract keywords from text for RAG relevance scoring"""
-        # Simple keyword extraction: filter out common words
-        common_words = {
-            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-            'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
-            'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-            'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these',
-            'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which',
-            'who', 'when', 'where', 'why', 'how'
-        }
-        
-        # Tokenize and filter
-        words = re.findall(r'\b\w+\b', text.lower())
-        filtered = [w for w in words if w not in common_words and len(w) > 3]
-        
-        # Count word frequencies and return top keywords
-        word_counts = Counter(filtered)
-        return [word for word, count in word_counts.most_common(num_keywords)]
-    
-    def _chunk_text(self, text: str) -> list[str]:
-        """Chunk text into pieces of chunk_size characters"""
-        chunks = []
-        for i in range(0, len(text), self.chunk_size):
-            chunks.append(text[i:i + self.chunk_size])
-        return chunks
-    
-    def _score_chunk(self, chunk: str, keywords: list[str]) -> float:
-        """Score a chunk based on keyword frequency"""
-        chunk_lower = chunk.lower()
-        score = sum(chunk_lower.count(keyword) for keyword in keywords)
-        return score
-    
-    def _select_relevant_chunks(self, chunks: list[str], num_chunks: int = 5) -> list[str]:
-        """Select most relevant chunks based on keyword frequency"""
-        if not chunks or len(chunks) <= num_chunks:
-            return chunks
-        
-        # Extract keywords from all chunks combined
-        combined_text = " ".join(chunks)
-        keywords = self._extract_keywords(combined_text)
-        
-        # Score and sort chunks
-        scored_chunks = [(chunk, self._score_chunk(chunk, keywords)) for chunk in chunks]
-        scored_chunks.sort(key=lambda x: x[1], reverse=True)
-        
-        # Return top chunks
-        return [chunk for chunk, score in scored_chunks[:num_chunks]]
-    
-    def _call_mistral(self, prompt: str) -> str:
-        """Call Hugging Face model API with fallback to mock response"""
-        # Try each model candidate
-        for model_id in self.model_candidates:
-            try:
-                api_url = self._get_model_url(model_id)
-                
-                @retry(
-                    stop=stop_after_attempt(2),
-                    wait=wait_exponential(multiplier=1, min=2, max=5),
-                    reraise=True
-                )
-                def make_request():
-                    payload = {
-                        "inputs": prompt,
-                        "parameters": {
-                            "max_new_tokens": 2000,
-                            "temperature": 0.7,
-                            "top_p": 0.9,
-                        }
-                    }
-                    response = requests.post(
-                        api_url,
-                        headers=self.headers,
-                        json=payload,
-                        timeout=60
-                    )
-                    response.raise_for_status()
-                    return response.json()
-                
-                result = make_request()
-                # Handle both list and dict response formats
-                if isinstance(result, list):
-                    return result[0].get('generated_text', '')
-                return result.get('generated_text', '')
-                
-            except requests.exceptions.HTTPError as e:
-                error_code = e.response.status_code
-                print(f"Model {model_id} unavailable (HTTP {error_code}), trying next...")
-                continue  # Try next model
-            except Exception as e:
-                print(f"Model {model_id} error: {str(e)}, trying next...")
-                continue  # Try next model
-        
-        # If all models fail, raise error that will trigger mock fallback
-        raise RuntimeError("All Hugging Face models unavailable. Using mock response.")
-    
-    
-    def generate_with_rag(self, prompt: str) -> str:
-        """
-        Generate content with RAG using Mistral/HuggingFace.
-        Used as fallback when Groq rate limits.
-        """
-        try:
-            return self._call_mistral(prompt)
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 429:
-                error_msg = f"HuggingFace rate limit (429): {str(e)}"
-                raise RuntimeError(error_msg) from e
-            raise
-        """Generate study notes from text chunks using Mistral"""
-        if not chunks:
-            raise ValueError("No chunks provided")
-        
-        # Select most relevant chunks
-        relevant_chunks = self._select_relevant_chunks(chunks, num_chunks=5)
-        chunks_text = "\n---\n".join(relevant_chunks)
-        
-        topic_hint = f"Topic: {topic}\n" if topic else ""
-        prompt = f"""{topic_hint}Study Materials:
----
 {chunks_text}
----
 
 Based on the study materials above, generate comprehensive study notes with the following structure:
 
 ## 📚 Key Concepts
-- List and explain the main concepts
-- Use bullet points for clarity
 
 ## 💡 Detailed Explanations
-- Provide deeper understanding of each concept
-- Include examples where relevant
 
 ## 🎯 Summary
-- Recap the most important points
 
 Please format the response in clean Markdown."""
 
-        return self._call_mistral(prompt)
+# New: Use model_dispatch for artifact generation
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from model_dispatch import generateArtifacts
+
+class HuggingFaceRAG:
+    """Hugging Face RAG implementation using MiniMaxAI/MiniMax-M2.5 and Qwen/Qwen2.5-7B-Instruct"""
+    def __init__(self):
+        pass
+
+    def generate_artifacts(self, noteText: str):
+        """Generate Mind Map JSON and Cheat Sheet Markdown using new models"""
+        return generateArtifacts(noteText)
 
 
 class TextExtractor:
@@ -887,27 +746,22 @@ class AIService:
         # Combine all texts and chunk them
         combined_text = " ".join(source_texts)
         
-        # Try HuggingFace RAG
+        # Use new artifact generation logic
         try:
             rag = HuggingFaceRAG()
-            chunks = rag._chunk_text(combined_text)
-            notes = rag.generate_notes_from_chunks(chunks, topic=topic)
-            
+            artifacts = rag.generate_artifacts(combined_text)
             return {
-                "notes": notes,
+                "mind_map_json": artifacts["mind_map_json"],
+                "cheat_sheet_md": artifacts["cheat_sheet_md"],
                 "sources_count": len(source_texts),
-                "provider": "huggingface"
+                "provider": "huggingface-new"
             }
         except Exception as e:
-            # Log the error and use mock response for development
-            print(f"HuggingFace RAG error: {str(e)}")
+            print(f"HuggingFace artifact error: {str(e)}")
             print("Falling back to mock response for development")
-            
-            # Generate mock response based on sources
-            mock_notes = self._generate_mock_notes(combined_text, topic)
-            
             return {
-                "notes": mock_notes,
+                "mind_map_json": {},
+                "cheat_sheet_md": "",
                 "sources_count": len(source_texts),
                 "provider": "huggingface-mock"
             }
