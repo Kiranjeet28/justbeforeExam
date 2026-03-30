@@ -15,7 +15,7 @@ from rag.processor import StudyMaterialEngine, MultiModelNotesGenerator
 from rag.agent import run_agent
 from models import Report, Source
 from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
-from services import AIService
+from services import AIService, upload_router
 from services.ai_service import RateLimitExceeded
 from services.artifact_service import ArtifactTransformationService
 from services.youtube_transcript_service import (
@@ -70,7 +70,9 @@ async def lifespan(app: FastAPI):
     # Shutdown event (if needed in future)
 
 
+
 app = FastAPI(title="justBeforExam API", lifespan=lifespan)
+app.include_router(upload_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
