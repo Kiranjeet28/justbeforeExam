@@ -16,6 +16,7 @@ export default function NoteFileUpload() {
 
     const handleFile = async (file: File) => {
         setError(null);
+        setSuccess(false);
         if (!ACCEPTED_FORMATS.some((ext) => file.name.endsWith(ext))) {
             setError("Unsupported file type. Please upload PDF, DOCX, or TXT.");
             return;
@@ -26,14 +27,45 @@ export default function NoteFileUpload() {
         }
         setUploading(true);
         setProgress(0);
-        setSuccess(false);
-        // Simulate upload
-        for (let i = 1; i <= 10; i++) {
-            await new Promise((r) => setTimeout(r, 80));
-            setProgress(i * 10);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/upload", true);
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    setProgress(Math.round((event.loaded / event.total) * 100));
+                }
+            };
+
+            xhr.onload = () => {
+                setUploading(false);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    setSuccess(true);
+                    setError(null);
+                } else {
+                    let msg = "Upload failed.";
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        msg = res.detail || res.error || msg;
+                    } catch { }
+                    setError(msg);
+                }
+            };
+
+            xhr.onerror = () => {
+                setUploading(false);
+                setError("Network error during upload.");
+            };
+
+            xhr.send(formData);
+        } catch (err) {
+            setUploading(false);
+            setError("Unexpected error during upload.");
         }
-        setUploading(false);
-        setSuccess(true);
     };
 
     const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
