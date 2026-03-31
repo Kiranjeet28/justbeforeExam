@@ -24,3 +24,4 @@ faiss-cpu
 tavily-python
 sentence-transformers
 torch
+psycopg2-binary
