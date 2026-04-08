@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: backend
+    runtime: python
+    pythonVersion: 3.11
+    buildCommand: bash render-build.sh
+    startCommand: bash render-start.sh
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "true"
