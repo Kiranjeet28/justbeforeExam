@@ -357,79 +357,79 @@
 
     /* Button base styles with transitions */
     .btn-base {
-        @apply inline-flex items-center justify-center rounded-lg font-medium transition-smooth select-none disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 ease-in-out select-none disabled:opacity-50 disabled:cursor-not-allowed;
     }
 
     .btn-primary {
-        @apply btn-base bg-primary text-primary-foreground hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
+        @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 ease-in-out select-none disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
     }
 
     .btn-secondary {
-        @apply btn-base bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
+        @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 ease-in-out select-none disabled:opacity-50 disabled:cursor-not-allowed bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
     }
 
     .btn-ghost {
-        @apply btn-base hover:bg-muted/50 text-foreground active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
+        @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 ease-in-out select-none disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/50 text-foreground active:scale-95 focus-visible:ring-2 focus-visible:ring-ring;
     }
 
     /* Card utilities */
     .card-base {
-        @apply rounded-lg bg-card text-card-foreground border border-border transition-smooth;
+        @apply rounded-lg bg-card text-card-foreground border border-border transition-all duration-200 ease-in-out;
     }
 
     .card-hoverable {
-        @apply card-base hover:shadow-md hover:border-primary/50 cursor-pointer;
+        @apply rounded-lg bg-card text-card-foreground border border-border transition-all duration-200 ease-in-out hover:shadow-md hover:border-primary/50 cursor-pointer;
     }
 
     .card-interactive {
-        @apply card-hoverable active:scale-95 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring;
+        @apply rounded-lg bg-card text-card-foreground border border-border transition-all duration-200 ease-in-out hover:shadow-md hover:border-primary/50 cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring;
     }
 
     /* Input base styles */
     .input-base {
-        @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+        @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
     }
 
     /* Badge utilities */
     .badge-base {
-        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-smooth;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 ease-in-out;
     }
 
     .badge-primary {
-        @apply badge-base bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 ease-in-out bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary;
     }
 
     .badge-success {
-        @apply badge-base bg-success/20 text-success dark:bg-success/30 dark:text-success;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 ease-in-out bg-success/20 text-success dark:bg-success/30 dark:text-success;
     }
 
     .badge-warning {
-        @apply badge-base bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 ease-in-out bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning;
     }
 
     .badge-destructive {
-        @apply badge-base bg-destructive/20 text-destructive dark:bg-destructive/30 dark:text-destructive;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200 ease-in-out bg-destructive/20 text-destructive dark:bg-destructive/30 dark:text-destructive;
     }
 
     /* Alert/Status utilities */
     .alert-base {
-        @apply flex gap-3 rounded-lg border p-4 text-sm transition-smooth;
+        @apply flex gap-3 rounded-lg border p-4 text-sm transition-all duration-200 ease-in-out;
     }
 
     .alert-success {
-        @apply alert-base border-success/30 bg-success-light text-foreground;
+        @apply flex gap-3 rounded-lg border p-4 text-sm transition-all duration-200 ease-in-out border-success/30 bg-success-light text-foreground;
     }
 
     .alert-warning {
-        @apply alert-base border-warning/30 bg-warning-light text-foreground;
+        @apply flex gap-3 rounded-lg border p-4 text-sm transition-all duration-200 ease-in-out border-warning/30 bg-warning-light text-foreground;
     }
 
     .alert-destructive {
-        @apply alert-base border-destructive/30 bg-destructive-light text-foreground;
+        @apply flex gap-3 rounded-lg border p-4 text-sm transition-all duration-200 ease-in-out border-destructive/30 bg-destructive-light text-foreground;
     }
 
     .alert-info {
-        @apply alert-base border-info/30 bg-info-light text-foreground;
+        @apply flex gap-3 rounded-lg border p-4 text-sm transition-all duration-200 ease-in-out border-info/30 bg-info-light text-foreground;
     }
 
     /* Divider utilities */
