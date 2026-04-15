@@ -215,8 +215,7 @@ class ArtifactTransformationService:
 
     def generate_cheat_sheet(self, note_content: str) -> str:
         """
-        Transform notes into a cheat sheet with bullet points and LaTeX formulas.
-        Uses Mathstral fallback if formula extraction is detected as complex.
+        Transform notes into a concise cheat sheet with key concepts in bullet points.
 
         Args:
             note_content: Original study notes
@@ -224,19 +223,12 @@ class ArtifactTransformationService:
         Returns:
             Formatted cheat sheet as markdown
         """
-        use_fallback = self._is_formula_too_complex(note_content)
-
-        prompt = f"""Convert the following study notes into a concise cheat sheet format.
+        prompt = f"""Convert the following study notes into a concise cheat sheet with key concepts in bullet points.
 
 Requirements:
-1. Extract key points as bullet points (use -, *, or •)
-2. Organize into logical sections with headers
-3. Keep each bullet point brief and memorable
-4. For any mathematical formulas or equations, wrap them in LaTeX delimiters: $formula$
-5. For more complex math, use block LaTeX: $$formula$$
-6. Include examples where helpful
-7. Use abbreviations and shortcuts to save space
-8. Highlight important terms in bold **term**
+1. Use bullet points for key concepts only
+2. Keep it concise and focused on essentials
+3. Use LaTeX for formulas if present: $formula$ or $$formula$$
 
 Study Notes:
 {note_content}
@@ -244,21 +236,10 @@ Study Notes:
 Generate the cheat sheet now:"""
 
         try:
-            if use_fallback:
-                logger.info(
-                    "Using Mathstral fallback for complex formula extraction in cheat sheet"
-                )
-                return self._call_mathstral_fallback(prompt, max_tokens=3000)
             return self._call_qwen_model(prompt, max_tokens=3000)
         except Exception as e:
-            logger.error(f"Primary model failed for cheat sheet: {e}")
-            if not use_fallback:
-                try:
-                    logger.info("Attempting Mathstral fallback after primary failure")
-                    return self._call_mathstral_fallback(prompt, max_tokens=3000)
-                except Exception as fallback_error:
-                    logger.error(f"Fallback model also failed: {fallback_error}")
-            logger.warning("All API calls failed, using mock cheat sheet")
+            logger.error(f"Model failed for cheat sheet: {e}")
+            logger.warning("API call failed, using mock cheat sheet")
             return self._generate_mock_cheat_sheet(note_content)
 
     def _validate_mind_map(self, mind_map: dict) -> bool:
@@ -414,7 +395,7 @@ Generate the mind map JSON now:"""
     def generate_study_artifacts(self, note_content: str) -> dict:
         """
         Generate both cheat sheet and mind map artifacts from notes.
-        Automatically routes to Mathstral fallback for complex formula extraction.
+        Mind map automatically routes to Mathstral fallback for complex formula extraction.
 
         Args:
             note_content: Original study notes
@@ -458,7 +439,7 @@ Generate the mind map JSON now:"""
             cheat_sheet = self.generate_cheat_sheet(note_content)
             result["cheat_sheet"] = cheat_sheet
             result["metadata"]["cheat_sheet_length"] = len(cheat_sheet)
-            result["metadata"]["model_used"]["cheat_sheet"] = model_label
+            result["metadata"]["model_used"]["cheat_sheet"] = "Qwen"
             logger.info(f"Cheat sheet generated: {len(cheat_sheet)} characters")
         except Exception as e:
             error_msg = f"Cheat sheet generation failed: {e}"
