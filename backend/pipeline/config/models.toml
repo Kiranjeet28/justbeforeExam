@@ -1,0 +1,53 @@
+# Models Configuration - Define LLM model parameters and settings
+# API keys should be set via environment variables, not hardcoded here
+
+[groq]
+model_name = "llama-3.3-70b-versatile"
+max_tokens = 4096
+temperature = 0.7
+provider = "groq"
+timeout = 30
+
+[gemini]
+model_name = "gemini-1.5-flash"
+max_tokens = 4096
+temperature = 0.7
+provider = "gemini"
+timeout = 30
+
+[openai]
+model_name = "gpt-4"
+max_tokens = 4096
+temperature = 0.7
+provider = "openai"
+timeout = 30
+
+[smart_llm]
+# SmartLLM uses Groq as primary with Gemini as fallback
+enabled = true
+primary = "groq"
+fallback = "gemini"
+
+[artifact]
+# Artifact model for mind maps and cheat sheets
+enabled = true
+primary_model = "qwen"
+fallback_model = "minimax"
+
+[huggingface]
+timeout = 120
+
+[huggingface.minimax]
+model_id = "MiniMaxAI/MiniMax-M2.5"
+output_type = "mind_map"
+description = "Generates mind maps from study notes"
+
+[huggingface.qwen]
+model_id = "Qwen/Qwen2.5-7B-Instruct"
+output_type = "cheat_sheet"
+description = "Generates cheat sheets with LaTeX formulas"
+
+[huggingface.mathstral]
+model_id = "mistralai/Mathstral-7B-v0.1"
+output_type = "cheat_sheet"
+description = "Fallback for complex mathematical content"

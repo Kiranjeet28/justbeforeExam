@@ -1,0 +1,155 @@
+# Pipeline Configuration - Core orchestrator and processing settings
+
+[pipeline]
+# Output format: "json" or "toml"
+format = "json"
+
+# Include metadata in all responses
+include_metadata = true
+
+# Enable streaming responses where applicable
+enable_streaming = true
+
+# Maximum number of retries for failed operations
+max_retries = 3
+
+# Primary model selection: "groq" or "gemini"
+primary_model = "smart-llm"
+
+# Enable automatic fallback to Gemini if Groq fails
+fallback_enabled = true
+
+# Logging level: "DEBUG", "INFO", "WARNING", "ERROR"
+log_level = "INFO"
+
+# [input] - Source processing configuration
+[pipeline.input]
+# Maximum characters per source content
+max_source_content_length = 100000
+
+# Maximum number of sources to process at once
+max_sources = 50
+
+# Text encoding for all content
+encoding = "utf-8"
+
+# [output] - Response formatting configuration
+[pipeline.output]
+# Output format: "json", "toml", or "markdown"
+format = "json"
+
+# Include metadata (model used, sources count, etc.)
+include_metadata = true
+
+# Pretty print output for readability
+pretty_print = true
+
+# Include timestamps in responses
+include_timestamps = true
+
+# [models] - Model configuration defaults
+[pipeline.models]
+# Primary model for note generation
+primary_model = "smart-llm"
+
+# Fallback model if primary fails
+fallback_model = "gemini"
+
+# Enable model fallback chain
+fallback_enabled = true
+
+# Temperature for generation (0.0-1.0)
+temperature = 0.7
+
+# Maximum tokens in response
+max_tokens = 4096
+
+# [timeouts] - Operation timeouts (seconds)
+[pipeline.timeouts]
+# Timeout for study notes generation
+note_generation = 60
+
+# Timeout for artifact generation (mind map + cheat sheet)
+artifact_generation = 90
+
+# Timeout for complete package generation
+complete_package = 150
+
+# Timeout for YouTube transcript extraction
+youtube_extraction = 45
+
+# Timeout for web content extraction
+web_extraction = 30
+
+# Timeout for LLM API calls
+llm_api_call = 60
+
+# [postprocessing] - Post-processing rules
+[pipeline.postprocessing]
+# Generate table of contents for study notes
+generate_toc = true
+
+# Validate markdown structure
+validate_markdown = true
+
+# Escape special characters
+escape_special_chars = false
+
+# Normalize LaTeX math delimiters
+normalize_latex = true
+
+# Add section numbers
+add_section_numbers = false
+
+# [artifacts] - Artifact generation settings
+[pipeline.artifacts]
+# Include mind map in complete package
+include_mind_map = true
+
+# Include cheat sheet in complete package
+include_cheat_sheet = true
+
+# Include study notes in complete package
+include_notes = true
+
+# Validate mind map structure
+validate_mind_map = true
+
+# Format for complex formulas: "latex" or "markdown"
+formula_format = "latex"
+
+# [caching] - Response caching configuration
+[pipeline.caching]
+# Enable response caching
+enabled = true
+
+# Cache TTL in seconds (0 = no expiration)
+ttl_seconds = 3600
+
+# Maximum cache size in MB
+max_size_mb = 100
+
+# [vector_store] - Vector database settings
+[pipeline.vector_store]
+# Vector store type: "faiss" or "pinecone"
+type = "faiss"
+
+# Embedding model
+embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
+
+# Vector dimension
+dimension = 384
+
+# Top-k results for retrieval
+top_k = 5
+
+# [rate_limiting] - API rate limiting
+[pipeline.rate_limiting]
+# Enable rate limiting
+enabled = true
+
+# Requests per minute
+requests_per_minute = 60
+
+# Burst capacity
+burst_capacity = 10
