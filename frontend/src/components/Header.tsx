@@ -15,7 +15,7 @@ import {
   Home,
   Book,
   BarChart3,
-  Help,
+  HelpCircle,
   Bell,
   ChevronRight,
 } from "lucide-react";
@@ -136,7 +136,7 @@ const UserMenu: React.FC = () => {
   const menuItems = [
     { label: "Profile", icon: <User size={18} />, href: "#" },
     { label: "Settings", icon: <Settings size={18} />, href: "#" },
-    { label: "Help", icon: <Help size={18} />, href: "#" },
+    { label: "Help", icon: <HelpCircle size={18} />, href: "#" },
     { label: "Logout", icon: <LogOut size={18} />, href: "#", isDanger: true },
   ];
 
