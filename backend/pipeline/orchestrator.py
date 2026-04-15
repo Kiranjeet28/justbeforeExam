@@ -1,19 +1,42 @@
 """Orchestrator: Coordinates the multi-LLM pipeline execution."""
 
+import logging
 from typing import Any, Dict, List, Optional
+
+from utils.config_manager import ConfigManager
 
 from .input.input_handler import InputHandler
 from .models.model_wrapper import get_model_registry
 from .postprocessing.post_processor import PostProcessor
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineOrchestrator:
     """Orchestrates the multi-LLM pipeline execution."""
 
     def __init__(self):
+        """Initialize orchestrator with config-driven settings."""
+        try:
+            self.config = ConfigManager.get_pipeline_config()
+            logger.info("Loaded pipeline config from TOML")
+        except Exception as e:
+            logger.warning(f"Failed to load pipeline config: {e}. Using defaults.")
+            self.config = {}
+
         self.input_handler = InputHandler()
         self.model_registry = get_model_registry()
-        self.post_processor = PostProcessor()
+
+        # Initialize post-processor with output format from config
+        output_config = self.config.get("output", {})
+        default_format = output_config.get("format", "json")
+        include_metadata = output_config.get("include_metadata", True)
+
+        self.post_processor = PostProcessor(default_format=default_format)
+        self.output_format = default_format
+        self.include_metadata = include_metadata
+
+        logger.info(f"Pipeline orchestrator initialized with format: {default_format}")
 
     def generate_study_notes(
         self,
@@ -55,17 +78,22 @@ class PipelineOrchestrator:
             # Step 3: Post-processing
             formatted_notes = self.post_processor.format_study_notes(result["content"])
 
-            return {
+            response = {
                 "status": "success",
                 "notes": formatted_notes,
-                "metadata": {
+            }
+
+            if self.include_metadata:
+                response["metadata"] = {
                     "model_used": result["model"],
                     "sources_count": input_data["total_sources"],
                     "input_length": len(input_data["combined_text"]),
-                },
-            }
+                }
+
+            return response
 
         except Exception as e:
+            logger.error(f"Pipeline error in generate_study_notes: {str(e)}")
             return self.post_processor.format_error_response(
                 f"Pipeline error: {str(e)}"
             )
@@ -108,25 +136,30 @@ class PipelineOrchestrator:
             # Step 3: Post-processing
             artifacts = result["content"]
             processed = self.post_processor.combine_artifacts(
-                notes="",  # Artifacts don't include notes
+                notes="",
                 mind_map=artifacts.get("mind_map"),
                 cheat_sheet=artifacts.get("cheat_sheet"),
             )
 
-            return {
+            response = {
                 "status": "success",
                 "artifacts": processed,
-                "metadata": {
+            }
+
+            if self.include_metadata:
+                response["metadata"] = {
                     "model_used": result["model"],
                     "sources_count": input_data["total_sources"],
                     "input_length": len(input_data["combined_text"]),
                     "has_complex_formulas": artifacts.get("metadata", {}).get(
                         "has_complex_formulas", False
                     ),
-                },
-            }
+                }
+
+            return response
 
         except Exception as e:
+            logger.error(f"Pipeline error in generate_artifacts: {str(e)}")
             return self.post_processor.format_error_response(
                 f"Pipeline error: {str(e)}"
             )
@@ -150,8 +183,8 @@ class PipelineOrchestrator:
             artifacts_result = self.generate_artifacts(source_ids, source_type)
 
             if (
-                notes_result["status"] != "success"
-                and artifacts_result["status"] != "success"
+                notes_result.get("status") != "success"
+                and artifacts_result.get("status") != "success"
             ):
                 return self.post_processor.format_error_response(
                     "Both notes and artifacts generation failed"
@@ -159,20 +192,20 @@ class PipelineOrchestrator:
 
             combined = {}
 
-            if notes_result["status"] == "success":
+            if notes_result.get("status") == "success":
                 combined.update(notes_result)
 
-            if artifacts_result["status"] == "success":
+            if artifacts_result.get("status") == "success":
                 combined["artifacts"] = artifacts_result["artifacts"]
-                # Merge metadata
                 if "metadata" not in combined:
                     combined["metadata"] = {}
-                combined["metadata"].update(artifacts_result["metadata"])
+                combined["metadata"].update(artifacts_result.get("metadata", {}))
 
             combined["status"] = "success"
             return combined
 
         except Exception as e:
+            logger.error(f"Pipeline error in generate_complete_package: {str(e)}")
             return self.post_processor.format_error_response(
                 f"Pipeline error: {str(e)}"
             )

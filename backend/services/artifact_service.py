@@ -1,6 +1,6 @@
 """
 Artifact Transformation Service
-Converts generated study notes into specialized formats.
+Converts generated study notes into specialized formats (JSON, TOML).
 Delegates to model_dispatch.py for model routing.
 """
 
@@ -8,10 +8,17 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import requests
 from dotenv import load_dotenv
+
+try:
+    import toml
+
+    TOML_AVAILABLE = True
+except ImportError:
+    TOML_AVAILABLE = False
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -392,23 +399,131 @@ Generate the mind map JSON now:"""
             logger.warning("All API calls failed for mind map, using mock response")
             return self._generate_mock_mind_map(note_content)
 
-    def generate_study_artifacts(self, note_content: str) -> dict:
+    # ------------------------------------------------------------------
+    # TOML Support Methods
+    # ------------------------------------------------------------------
+
+    def _to_toml(self, data: Dict[str, Any]) -> str:
+        """Convert a dictionary to TOML string format."""
+        if not TOML_AVAILABLE:
+            raise ImportError("toml package not installed")
+        try:
+            return toml.dumps(data)
+        except Exception as e:
+            logger.error(f"Failed to convert to TOML: {e}")
+            raise
+
+    def _mind_map_dict_to_toml_compatible(self, mind_map: dict) -> dict:
+        """Convert mind map dict to TOML-compatible structure."""
+        toml_structure = {
+            "metadata": {
+                "type": "mind_map",
+                "node_count": len(mind_map.get("nodes", [])),
+                "edge_count": len(mind_map.get("edges", [])),
+            },
+            "nodes": {},
+            "edges": {},
+        }
+
+        # Convert nodes list to dict with index as key
+        for i, node in enumerate(mind_map.get("nodes", [])):
+            node_key = f"node_{i}"
+            toml_structure["nodes"][node_key] = {
+                "id": node.get("id", ""),
+                "label": node.get("label", ""),
+                "level": node.get("level", 0),
+            }
+
+        # Convert edges list to dict with index as key
+        for i, edge in enumerate(mind_map.get("edges", [])):
+            edge_key = f"edge_{i}"
+            toml_structure["edges"][edge_key] = {
+                "source": edge.get("source", ""),
+                "target": edge.get("target", ""),
+            }
+
+        return toml_structure
+
+    def mind_map_toml(self, note_content: str) -> str:
+        """Generate mind map in TOML format.
+
+        Args:
+            note_content: Original study notes
+
+        Returns:
+            Mind map as TOML string
+        """
+        logger.info("Generating mind map in TOML format...")
+        mind_map_dict = self.generate_mind_map(note_content)
+        toml_compatible = self._mind_map_dict_to_toml_compatible(mind_map_dict)
+        return self._to_toml(toml_compatible)
+
+    def cheat_sheet_toml(self, note_content: str) -> str:
+        """Generate cheat sheet in TOML format.
+
+        Args:
+            note_content: Original study notes
+
+        Returns:
+            Cheat sheet as TOML string
+        """
+        logger.info("Generating cheat sheet in TOML format...")
+        cheat_sheet = self.generate_cheat_sheet(note_content)
+
+        # Parse cheat sheet into sections for TOML
+        lines = cheat_sheet.split("\n")
+        sections = {}
+        current_section = "general"
+        current_items = []
+
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                # Save previous section
+                if current_items:
+                    sections[current_section] = current_items
+                # Start new section
+                current_section = stripped.lstrip("#").strip().lower().replace(" ", "_")
+                current_items = []
+            elif stripped.startswith("-") and stripped:
+                # Add bullet point to current section
+                current_items.append(stripped[1:].strip())
+
+        # Save final section
+        if current_items:
+            sections[current_section] = current_items
+
+        toml_data = {
+            "metadata": {
+                "type": "cheat_sheet",
+                "section_count": len(sections),
+            },
+            "content": sections,
+        }
+
+        return self._to_toml(toml_data)
+
+    def generate_study_artifacts(
+        self, note_content: str, output_format: Literal["json", "toml"] = "json"
+    ) -> dict:
         """
         Generate both cheat sheet and mind map artifacts from notes.
         Mind map automatically routes to Mathstral fallback for complex formula extraction.
 
         Args:
             note_content: Original study notes
+            output_format: Output format - "json" or "toml"
 
         Returns:
             {
                 "success": bool,
-                "cheat_sheet": str (markdown),
-                "mind_map": dict (JSON),
+                "cheat_sheet": str (markdown or TOML),
+                "mind_map": dict or str (JSON dict or TOML string),
                 "metadata": {
                     "input_length": int,
                     "cheat_sheet_length": int,
                     "has_complex_formulas": bool,
+                    "output_format": str,
                     "model_used": {"cheat_sheet": str, "mind_map": str},
                     "errors": []
                 }
@@ -416,6 +531,9 @@ Generate the mind map JSON now:"""
         """
         if not note_content or not note_content.strip():
             raise ValueError("Note content cannot be empty")
+
+        if output_format not in ("json", "toml"):
+            raise ValueError("output_format must be 'json' or 'toml'")
 
         has_complex_formulas = self._is_formula_too_complex(note_content)
         model_label = "Mathstral" if has_complex_formulas else "Qwen"
@@ -428,6 +546,7 @@ Generate the mind map JSON now:"""
                 "input_length": len(note_content),
                 "cheat_sheet_length": 0,
                 "has_complex_formulas": has_complex_formulas,
+                "output_format": output_format,
                 "model_used": {"cheat_sheet": None, "mind_map": None},
                 "errors": [],
             },
@@ -435,8 +554,11 @@ Generate the mind map JSON now:"""
 
         # Generate cheat sheet
         try:
-            logger.info("Generating cheat sheet...")
-            cheat_sheet = self.generate_cheat_sheet(note_content)
+            logger.info(f"Generating cheat sheet in {output_format.upper()} format...")
+            if output_format == "toml":
+                cheat_sheet = self.cheat_sheet_toml(note_content)
+            else:
+                cheat_sheet = self.generate_cheat_sheet(note_content)
             result["cheat_sheet"] = cheat_sheet
             result["metadata"]["cheat_sheet_length"] = len(cheat_sheet)
             result["metadata"]["model_used"]["cheat_sheet"] = "Qwen"
@@ -448,13 +570,14 @@ Generate the mind map JSON now:"""
 
         # Generate mind map
         try:
-            logger.info("Generating mind map...")
-            mind_map = self.generate_mind_map(note_content)
+            logger.info(f"Generating mind map in {output_format.upper()} format...")
+            if output_format == "toml":
+                mind_map = self.mind_map_toml(note_content)
+            else:
+                mind_map = self.generate_mind_map(note_content)
             result["mind_map"] = mind_map
             result["metadata"]["model_used"]["mind_map"] = model_label
-            logger.info(
-                f"Mind map generated with {len(mind_map.get('nodes', []))} nodes"
-            )
+            logger.info(f"Mind map generated successfully")
         except Exception as e:
             error_msg = f"Mind map generation failed: {e}"
             logger.error(error_msg)
@@ -464,3 +587,14 @@ Generate the mind map JSON now:"""
             result["cheat_sheet"] is not None or result["mind_map"] is not None
         )
         return result
+
+    def generate_study_artifacts_toml(self, note_content: str) -> dict:
+        """Convenience wrapper to generate artifacts in TOML format.
+
+        Args:
+            note_content: Original study notes
+
+        Returns:
+            Artifacts dict with TOML formatted content
+        """
+        return self.generate_study_artifacts(note_content, output_format="toml")
