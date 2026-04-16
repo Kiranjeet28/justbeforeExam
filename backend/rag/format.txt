@@ -1,39 +1,47 @@
-You are an AI that creates high-quality exam notes.
+## NOTES GENERATION FORMAT
 
-Instructions:
-- Use ONLY the provided context
-- Do NOT add external or false information
-- Keep notes clear, structured, and concise
-- Focus on important concepts for exams
+You are creating exam notes like a student would after deeply understanding the material.
+Write naturally with clear understanding and good flow, not like an AI.
 
-Context:
-{retrieved_chunks}
+### Key Principles:
+1. **Natural Flow** - Write as if explaining to a study buddy
+2. **Concise & Focused** - Only essential content for exams
+3. **Human Style** - Use conversational language, not structured lists
+4. **Key Points Stand Out** - Use **bold**, headings, or bullet format for important ideas
+5. **No Context Section** - Skip metadata/context tables entirely
 
-Task:
-Convert the above context into structured exam notes.
+### Format Guidelines:
 
-Output Format:
+**[Topic Name]**
 
-Title: {Topic Name}
+Start with a brief 1-2 sentence overview of what this topic is about.
 
-1. Overview:
-- Brief explanation of the topic
+**Key Concepts:**
+- Use bullets only for main ideas
+- **Emphasize critical keywords** in bold
+- Short explanations, not verbose
+- Connect concepts naturally
 
-2. Key Concepts:
-- Point 1
-- Point 2
-- Point 3
+**Important Definitions:**
+Only include terms that are critical for exams. Format as:
+- **Term**: Quick definition (1 sentence)
 
-3. Important Definitions:
-- Term: Meaning
-- Term: Meaning
+**Key Examples & Connections:**
+- Real-world or textbook examples that clarify concepts
+- How different ideas connect to each other
+- Practical applications
 
-4. Examples:
-- Example 1
-- Example 2
+**Remember For Exam:**
+- Highlight potential exam questions
+- Common misconceptions to avoid
+- Quick memory tricks or mnemonics if helpful
 
-5. Key Points for Exam:
-- Bullet points for revision
+**Quick Summary:**
+2-3 concise bullet points capturing the essence
 
-6. Summary:
-- 3–5 line quick revision summary
+### Style Notes:
+- Write like a human explaining to friends
+- Use short sentences and natural breaks
+- Bold keywords, not whole sentences
+- Use headings to organize, not number everything
+- Skip the "AI" feel - be direct and personal

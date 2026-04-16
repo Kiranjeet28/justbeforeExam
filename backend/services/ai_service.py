@@ -379,49 +379,38 @@ IMPORTANT:
     @staticmethod
     def _get_study_notes_prompt(sources_text: str) -> str:
         """Prompt template for comprehensive study notes generation"""
-        return f"""You are an expert academic summarizer and study guide creator. Review the following study materials and generate comprehensive study notes in clean Markdown format.
+        return f"""You are creating exam study notes like a student would after understanding the material.
 
 STUDY MATERIALS:
----
 {sources_text}
----
 
-Generate structured study notes with the following sections:
+Generate natural, human-like study notes with these characteristics:
+- Written as if you understand the material deeply
+- Natural flow between ideas, not rigid structure
+- Only include important concepts for exams
+- Use **bold keywords** to highlight critical terms
+- Organize with headings strategically
+- Skip Context or Sources tables entirely
 
-## 💡 Main Concepts
-Provide detailed explanations of the core concepts covered in the materials. For each concept:
-- Explain what it is (clear definition)
-- Explain why it matters (relevance and importance)
-- Provide practical examples from the materials
-- Connect to related concepts
-
-## 📌 Essential Definitions
-Create a comprehensive glossary with 15-20 key terms. Format each as:
-**Term**: Clear, concise definition that's exactly 1-2 sentences
-
-## 🧠 Conceptual Connections
-Explain how the topics and concepts relate to each other:
-- Which concepts build upon others?
-- What are the causal relationships?
-- How do different ideas form a cohesive understanding?
-- What are the prerequisites for understanding each concept?
-
-## ⚠️ Common Pitfalls
-List 8-10 mistakes that students commonly make when learning these topics:
-- A description of the common misconception
-- Why students make this error
-- The correct understanding or approach
+Structure your notes naturally:
+1. Brief overview of what this topic covers
+2. Key concepts with short, clear explanations
+3. Important definitions (only the essential ones)
+4. Real examples to clarify complex ideas
+5. How different concepts connect together
+6. Common mistakes to avoid
+7. Quick summary bullets
 
 ---
 
 IMPORTANT:
-- Return ONLY valid, clean Markdown
-- Use clear headers and consistent formatting
-- Be comprehensive but organized
-- Draw all information directly from the provided materials
-- Avoid code blocks unless necessary for examples
-- Make content suitable for exam preparation
-- Use proper emphasis (**bold**, *italic*) for important terms
+- Write conversationally, not like an AI
+- Every sentence should matter - be concise
+- Use natural language and short sentences
+- Make it scannable for quick review
+- Draw all content from the provided materials only
+- Emphasize keywords with bold, not entire sentences
+- Skip unnecessary structure and verbose explanations
 """
 
 
@@ -590,49 +579,38 @@ IMPORTANT:
     @staticmethod
     def _get_study_notes_prompt(sources_text: str) -> str:
         """Prompt template for comprehensive study notes generation"""
-        return f"""You are an expert academic summarizer and study guide creator. Review the following study materials and generate comprehensive study notes in clean Markdown format.
+        return f"""You are creating exam study notes like a student would after understanding the material.
 
 STUDY MATERIALS:
----
 {sources_text}
----
 
-Generate structured study notes with the following sections:
+Generate natural, human-like study notes with these characteristics:
+- Written as if you understand the material deeply
+- Natural flow between ideas, not rigid structure
+- Only include important concepts for exams
+- Use **bold keywords** to highlight critical terms
+- Organize with headings strategically
+- Skip Context or Sources tables entirely
 
-## 💡 Main Concepts
-Provide detailed explanations of the core concepts covered in the materials. For each concept:
-- Explain what it is (clear definition)
-- Explain why it matters (relevance and importance)
-- Provide practical examples from the materials
-- Connect to related concepts
-
-## 📌 Essential Definitions
-Create a comprehensive glossary with 15-20 key terms. Format each as:
-**Term**: Clear, concise definition that's exactly 1-2 sentences
-
-## 🧠 Conceptual Connections
-Explain how the topics and concepts relate to each other:
-- Which concepts build upon others?
-- What are the causal relationships?
-- How do different ideas form a cohesive understanding?
-- What are the prerequisites for understanding each concept?
-
-## ⚠️ Common Pitfalls
-List 8-10 mistakes that students commonly make when learning these topics:
-- A description of the common misconception
-- Why students make this error
-- The correct understanding or approach
+Structure your notes naturally:
+1. Brief overview of what this topic covers
+2. Key concepts with short, clear explanations
+3. Important definitions (only the essential ones)
+4. Real examples to clarify complex ideas
+5. How different concepts connect together
+6. Common mistakes to avoid
+7. Quick summary bullets
 
 ---
 
 IMPORTANT:
-- Return ONLY valid, clean Markdown
-- Use clear headers and consistent formatting
-- Be comprehensive but organized
-- Draw all information directly from the provided materials
-- Avoid code blocks unless necessary for examples
-- Make content suitable for exam preparation
-- Use proper emphasis (**bold**, *italic*) for important terms
+- Write conversationally, not like an AI
+- Every sentence should matter - be concise
+- Use natural language and short sentences
+- Make it scannable for quick review
+- Draw all content from the provided materials only
+- Emphasize keywords with bold, not entire sentences
+- Skip unnecessary structure and verbose explanations
 """
 
 

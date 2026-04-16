@@ -133,22 +133,26 @@ Provide a brief plan in 2-3 sentences."""
 
         state["status_updates"].append("✍️  Generating notes with AI...")
 
-        # Build writing prompt
-        user_input = f"""Create comprehensive exam notes for: {topic}
+        # Build writing prompt - emphasize human-like, natural style
+        user_input = f"""Create study notes for exam preparation on: {topic}
 
-Retrieved Context:
+Study Materials:
 {context}
 
-Web Research:
+Additional Research:
 {web_research}
 
-Generate well-structured, detailed exam notes. Include:
-- Key concepts and definitions
-- Important facts and examples
-- Study tips and mnemonics
-- Practice questions
+Write these notes as a student would after understanding the material:
+- Natural flow and clear explanations
+- Only key concepts and important ideas
+- Use bold for critical keywords
+- Short, scannable bullet points for main ideas
+- Real examples to clarify concepts
+- NO Context or Sources section
+- Skip unnecessary structure
+- Focus on what matters for exams
 
-Format as markdown with clear sections."""
+Generate comprehensive but concise exam notes."""
 
         try:
             # Use multi-model generator with Groq primary + Gemini fallback

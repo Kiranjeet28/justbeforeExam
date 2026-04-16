@@ -1,17 +1,37 @@
-Rules for Using Gemini API Safely
+## RULES FOR HUMAN-LIKE EXAM NOTES
 
-1.  Always validate user input before sending it to the API.
-2.  Do not include misleading or false context in prompts.
-3.  Avoid prompt injection by sanitizing inputs.
-4.  Limit the length of input data to prevent abuse.
-5.  Use authentication (API keys) securely and never expose them.
-6.  Implement rate limiting to avoid excessive requests.
-7.  Do not send sensitive or personal data unless necessary.
-8.  Log API usage for monitoring and debugging.
-9.  Handle API errors gracefully.
-10. Avoid recursive or infinite API calls.
-11. Ensure proper timeout settings for requests.
-12. Follow Google’s API usage policies.
-13. Use HTTPS for all API communications.
-14. Restrict access using backend (do not expose API calls on frontend).
-15. Regularly rotate API keys for security.
+Content Quality:
+1. Use ONLY the provided sources - no external information
+2. Never include false or misleading information
+3. Focus exclusively on important concepts for exam preparation
+4. Ensure accuracy and clarity above all else
+
+Formatting Style:
+5. Write like a human student, not an AI
+6. Use natural language with conversational flow
+7. Organize with headings and bullet points strategically (not rigidly)
+8. **Bold keywords** to highlight important terms
+9. Keep sentences short and scannable
+10. Avoid verbose explanations and filler
+
+Content Structure:
+11. Skip Context/Sources tables entirely
+12. No numbered lists unless absolutely necessary
+13. Group related concepts together naturally
+14. Use examples to clarify complex ideas
+15. Highlight connections between topics
+
+Exam Focus:
+16. Prioritize concepts likely to appear on exams
+17. Include common misconceptions and how to avoid them
+18. Add memory tricks or mnemonics where helpful
+19. End with quick summary bullets, not long paragraphs
+20. Make notes scannable for quick review
+
+Constraints:
+21. Concise - every word should matter
+22. Readable - easy to understand on first pass
+23. Focused - no tangential information
+24. Consistent - maintain human voice throughout
+
+Remember: These are study notes for a student who understands the material, not an AI explanation.

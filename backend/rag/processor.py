@@ -167,14 +167,15 @@ class MultiModelNotesGenerator:
 
     def _build_system_prompt(self) -> str:
         """Combine rules and format as system prompt."""
-        return f"{self._rules_text}\n\nFORMAT REQUIREMENTS:\n{self._format_text}"
+        return f"You are an expert academic tutor creating study notes.\n\n{self._rules_text}\n\n{self._format_text}"
 
     def _build_user_prompt(self, user_content: str) -> str:
         """Build user prompt with context."""
         return (
-            f"CONTEXT FROM SOURCES:\n{user_content}\n\n"
-            "TASK: Based on the context above, create comprehensive exam notes "
-            "following the required format and rules."
+            f"Create exam notes from these study materials:\n\n"
+            f"{user_content}\n\n"
+            "Generate natural, human-like study notes that a student would write after understanding the material. "
+            "Focus on key concepts only. Write with clear flow and good organization."
         )
 
     def _call_groq(self, prompt: str) -> tuple[str, Optional[str]]:
