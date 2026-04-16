@@ -168,7 +168,7 @@ def transform_notes_to_artifacts(payload: TransformNotesRequest) -> dict[str, An
     """
     try:
         orchestrator = get_orchestrator()
-        result = orchestrator.generate_artifacts()
+        result = orchestrator.generate_artifacts(content=payload.content)
 
         if result["status"] != "success":
             raise HTTPException(

@@ -102,19 +102,31 @@ class PipelineOrchestrator:
         self,
         source_ids: Optional[List[int]] = None,
         source_type: Optional[str] = None,
+        content: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate mind map and cheat sheet artifacts.
 
         Pipeline:
-        1. Extract text from sources
+        1. Extract text from sources or use provided content
         2. Generate artifacts using artifact service
         3. Post-process and validate
         """
         try:
             # Step 1: Input processing
-            input_data = self.input_handler.get_sources_text(source_ids, source_type)
-            if not input_data["combined_text"]:
+            if content:
+                # Use provided content directly
+                combined_text = content
+                sources_count = 0
+            else:
+                # Get content from sources
+                input_data = self.input_handler.get_sources_text(
+                    source_ids, source_type
+                )
+                combined_text = input_data["combined_text"]
+                sources_count = input_data["total_sources"]
+
+            if not combined_text:
                 return self.post_processor.format_error_response(
                     "No content found in sources"
                 )
@@ -126,7 +138,7 @@ class PipelineOrchestrator:
                     "Artifact model not available"
                 )
 
-            result = model.generate(input_data["combined_text"])
+            result = model.generate(combined_text)
 
             if result["status"] != "success":
                 return self.post_processor.format_error_response(
@@ -149,8 +161,8 @@ class PipelineOrchestrator:
             if self.include_metadata:
                 response["metadata"] = {
                     "model_used": result["model"],
-                    "sources_count": input_data["total_sources"],
-                    "input_length": len(input_data["combined_text"]),
+                    "sources_count": sources_count,
+                    "input_length": len(combined_text),
                     "has_complex_formulas": artifacts.get("metadata", {}).get(
                         "has_complex_formulas", False
                     ),

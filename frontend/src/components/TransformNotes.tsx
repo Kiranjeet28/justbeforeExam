@@ -69,6 +69,9 @@ export function TransformNotes({
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [flowInstance, setFlowInstance] = useState<ReactFlowInstance | null>(
+    null,
+  );
 
   // Validate mind map data
   const validateMindMap = useCallback(
@@ -180,6 +183,15 @@ export function TransformNotes({
     }
   }, [artifacts?.mind_map, createFlowElements, setNodes, setEdges]);
 
+  // Trigger fitView when nodes are loaded
+  useEffect(() => {
+    if (flowInstance && nodes.length > 0 && activeTab === "mind_map") {
+      setTimeout(() => {
+        flowInstance.fitView({ padding: 0.2, includeHiddenNodes: false });
+      }, 100);
+    }
+  }, [nodes, flowInstance, activeTab]);
+
   const handleTransform = async () => {
     setIsTransforming(true);
     setError(null);
@@ -267,6 +279,7 @@ export function TransformNotes({
 
   // React Flow callbacks
   const onInit = useCallback((reactFlowInstance: ReactFlowInstance) => {
+    setFlowInstance(reactFlowInstance);
     // Fit view on initialization with some delay to ensure nodes are rendered
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2, includeHiddenNodes: false });
@@ -383,7 +396,7 @@ export function TransformNotes({
             </div>
           </div>
         ) : activeTab === "mind_map" && artifacts.mind_map ? (
-          <div className="h-full relative">
+          <div className="relative w-full h-96">
             <ReactFlow
               nodes={nodes}
               edges={edges}
