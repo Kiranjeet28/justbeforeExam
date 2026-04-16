@@ -467,48 +467,6 @@ class APIClient {
   }
 
   /**
-   * Transform notes into artifacts (cheat sheet, mind map)
-   */
-  async transformNotes(content: string): Promise<{
-    success: boolean;
-    artifacts: {
-      cheat_sheet?: string;
-      mind_map?: {
-        root: string;
-        children: Array<{
-          branch: string;
-          leafs: string[];
-        }>;
-      };
-    };
-  }> {
-    if (!content || content.trim().length === 0) {
-      throw new ValidationError("Content cannot be empty");
-    }
-
-    return this.request<any>("/api/transform-notes", {
-      method: "POST",
-      body: JSON.stringify({ content }),
-    });
-  }
-
-  /**
-   * Generate cheat sheet
-   */
-  async generateCheatSheet(
-    sourceIds?: number[],
-    topic?: string,
-  ): Promise<{ content: string }> {
-    return this.request<{ content: string }>("/api/cheat-sheet", {
-      method: "POST",
-      body: JSON.stringify({
-        source_ids: sourceIds || [],
-        topic: topic || "",
-      }),
-    });
-  }
-
-  /**
    * Stream note generation (for real-time updates)
    */
   async generateNotesStreaming(

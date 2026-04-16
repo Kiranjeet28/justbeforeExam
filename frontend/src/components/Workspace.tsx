@@ -8,7 +8,6 @@ import {
   Loader2,
   X,
   Sparkles,
-  Wand2,
   Plus,
   Check,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import {
   RateLimitedException,
 } from "@/lib/generateExamNotes";
 import { RateLimitFallback } from "@/components/RateLimitFallback";
-import { TransformNotes } from "@/components/TransformNotes";
 
 interface WorkspaceProps {
   onSourcesChange?: (count: number) => void;
@@ -67,7 +65,6 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
   const [ragMarkdown, setRagMarkdown] = useState("");
   const [ragModel, setRagModel] = useState("");
   const [ragModalOpen, setRagModalOpen] = useState(false);
-  const [transformModalOpen, setTransformModalOpen] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<{
     retryAfter: number;
     retryAt: string;
@@ -307,11 +304,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
               initial={{ opacity: 0, y: -15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className={`mb-8 w-full rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 px-8 py-4 text-center font-bold text-white shadow-xl shadow-blue-600/25 transition-all duration-300 ${
-                isRagGenerating
+              className={`mb-8 w-full rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 px-8 py-4 text-center font-bold text-white shadow-xl shadow-blue-600/25 transition-all duration-300 ${isRagGenerating
                   ? "cursor-not-allowed opacity-70"
                   : "hover:shadow-xl hover:shadow-blue-600/40 hover:from-blue-500 hover:via-blue-600 hover:to-blue-700"
-              }`}
+                }`}
               whileHover={isRagGenerating ? {} : { scale: 1.02, y: -2 }}
               whileTap={isRagGenerating ? {} : { scale: 0.98 }}
             >
@@ -352,11 +348,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
             {!showContentPreview ? (
               // Initial State - Drag & Drop Zone
               <motion.div
-                className={`relative rounded-2xl border-2 bg-slate-950/30 px-8 py-8 transition-all duration-300 backdrop-blur-sm ${
-                  isDragOver
+                className={`relative rounded-2xl border-2 bg-slate-950/30 px-8 py-8 transition-all duration-300 backdrop-blur-sm ${isDragOver
                     ? "scale-[1.02] border-blue-400/80 shadow-2xl shadow-blue-500/20 bg-blue-950/20"
                     : "border-slate-700/60 hover:border-slate-700/80"
-                }`}
+                  }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -468,11 +463,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                       <motion.button
                         type="submit"
                         disabled={isParsing || !input.trim()}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${
-                          isParsing || !input.trim()
+                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim()
                             ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                             : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                        }`}
+                          }`}
                         whileHover={
                           isParsing || !input.trim() ? {} : { scale: 1.05 }
                         }
@@ -519,11 +513,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                                 type="button"
                                 onClick={() => setSelectedLinkId(link.id)}
                                 layout
-                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${
-                                  selectedLink?.id === link.id
+                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${selectedLink?.id === link.id
                                     ? "border-rose-400/50 bg-rose-500/20 text-rose-100 shadow-lg shadow-rose-500/20"
                                     : "border-slate-600/60 bg-slate-800/40 text-slate-300 hover:border-rose-400/30 hover:bg-slate-800/60 hover:text-slate-100"
-                                }`}
+                                  }`}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 title={link.url}
@@ -556,11 +549,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                                 type="button"
                                 onClick={() => setSelectedLinkId(link.id)}
                                 layout
-                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${
-                                  selectedLink?.id === link.id
+                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${selectedLink?.id === link.id
                                     ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-100 shadow-lg shadow-cyan-500/20"
                                     : "border-slate-600/60 bg-slate-800/40 text-slate-300 hover:border-cyan-400/30 hover:bg-slate-800/60 hover:text-slate-100"
-                                }`}
+                                  }`}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 title={link.url}
@@ -669,24 +661,24 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                               </div>
                               {(selectedLink.cleanedParagraphs ?? []).length >
                                 0 && (
-                                <div>
-                                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
-                                    Content Preview
-                                  </p>
-                                  <div className="space-y-3">
-                                    {(selectedLink.cleanedParagraphs ?? [])
-                                      .slice(0, 3)
-                                      .map((para, i) => (
-                                        <p
-                                          key={i}
-                                          className="text-sm leading-relaxed text-slate-300 line-clamp-2 rounded-lg border border-slate-700/30 bg-slate-800/20 p-3"
-                                        >
-                                          {para}
-                                        </p>
-                                      ))}
+                                  <div>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+                                      Content Preview
+                                    </p>
+                                    <div className="space-y-3">
+                                      {(selectedLink.cleanedParagraphs ?? [])
+                                        .slice(0, 3)
+                                        .map((para, i) => (
+                                          <p
+                                            key={i}
+                                            className="text-sm leading-relaxed text-slate-300 line-clamp-2 rounded-lg border border-slate-700/30 bg-slate-800/20 p-3"
+                                          >
+                                            {para}
+                                          </p>
+                                        ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
                             </div>
                           )}
                         </motion.div>
@@ -714,11 +706,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                       <motion.button
                         type="submit"
                         disabled={isParsing || !input.trim()}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${
-                          isParsing || !input.trim()
+                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim()
                             ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                             : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                        }`}
+                          }`}
                         whileHover={
                           isParsing || !input.trim() ? {} : { scale: 1.05 }
                         }
@@ -764,11 +755,10 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                   disabled={
                     isParsing || !input.trim() || detectedType === "note"
                   }
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all duration-300 ${
-                    isParsing || !input.trim() || detectedType === "note"
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim() || detectedType === "note"
                       ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                       : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                  }`}
+                    }`}
                   whileHover={
                     isParsing || !input.trim() || detectedType === "note"
                       ? {}
@@ -975,17 +965,6 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                 <div className="flex items-center gap-3">
                   <motion.button
                     type="button"
-                    onClick={() => setTransformModalOpen(true)}
-                    className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/20 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/40 hover:from-purple-500 hover:to-pink-500"
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    title="Transform into cheat sheet and mind map"
-                  >
-                    <Wand2 size={16} />
-                    <span>Transform</span>
-                  </motion.button>
-                  <motion.button
-                    type="button"
                     onClick={() => {
                       const element = document.createElement("a");
                       const file = new Blob([ragMarkdown], {
@@ -1133,55 +1112,6 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
             message={rateLimitError.message}
             onRetry={handleRateLimitRetry}
           />
-        )}
-      </AnimatePresence>
-
-      {/* Transform Modal */}
-      <AnimatePresence>
-        {transformModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
-            onClick={() => setTransformModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-700/40 bg-gradient-to-r from-slate-900/80 to-slate-950/80 px-8 py-6 backdrop-blur-sm">
-                <h2 className="text-2xl font-bold text-slate-100">
-                  Transform Study Notes
-                </h2>
-                <motion.button
-                  type="button"
-                  onClick={() => setTransformModalOpen(false)}
-                  className="rounded-lg p-2.5 text-slate-400 transition-all duration-300 hover:bg-slate-800/60 hover:text-slate-200"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Close modal"
-                >
-                  <X size={24} />
-                </motion.button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar">
-                <TransformNotes
-                  noteContent={ragMarkdown}
-                  onClose={() => setTransformModalOpen(false)}
-                  title="Generate Cheat Sheet & Mind Map"
-                />
-              </div>
-            </motion.div>
-          </motion.div>
         )}
       </AnimatePresence>
     </>

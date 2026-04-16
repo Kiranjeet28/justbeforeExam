@@ -98,84 +98,6 @@ class PipelineOrchestrator:
                 f"Pipeline error: {str(e)}"
             )
 
-    def generate_artifacts(
-        self,
-        source_ids: Optional[List[int]] = None,
-        source_type: Optional[str] = None,
-        content: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Generate mind map and cheat sheet artifacts.
-
-        Pipeline:
-        1. Extract text from sources or use provided content
-        2. Generate artifacts using artifact service
-        3. Post-process and validate
-        """
-        try:
-            # Step 1: Input processing
-            if content:
-                # Use provided content directly
-                combined_text = content
-                sources_count = 0
-            else:
-                # Get content from sources
-                input_data = self.input_handler.get_sources_text(
-                    source_ids, source_type
-                )
-                combined_text = input_data["combined_text"]
-                sources_count = input_data["total_sources"]
-
-            if not combined_text:
-                return self.post_processor.format_error_response(
-                    "No content found in sources"
-                )
-
-            # Step 2: Model call
-            model = self.model_registry.get("artifact")
-            if not model:
-                return self.post_processor.format_error_response(
-                    "Artifact model not available"
-                )
-
-            result = model.generate(combined_text)
-
-            if result["status"] != "success":
-                return self.post_processor.format_error_response(
-                    f"Artifact generation failed: {result.get('error', 'Unknown error')}"
-                )
-
-            # Step 3: Post-processing
-            artifacts = result["content"]
-            processed = self.post_processor.combine_artifacts(
-                notes="",
-                mind_map=artifacts.get("mind_map"),
-                cheat_sheet=artifacts.get("cheat_sheet"),
-            )
-
-            response = {
-                "status": "success",
-                "artifacts": processed,
-            }
-
-            if self.include_metadata:
-                response["metadata"] = {
-                    "model_used": result["model"],
-                    "sources_count": sources_count,
-                    "input_length": len(combined_text),
-                    "has_complex_formulas": artifacts.get("metadata", {}).get(
-                        "has_complex_formulas", False
-                    ),
-                }
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Pipeline error in generate_artifacts: {str(e)}")
-            return self.post_processor.format_error_response(
-                f"Pipeline error: {str(e)}"
-            )
-
     def generate_complete_package(
         self,
         source_ids: Optional[List[int]] = None,
@@ -183,38 +105,21 @@ class PipelineOrchestrator:
         topic: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Generate complete study package: notes + artifacts.
+        Generate complete study package: notes.
 
         Pipeline:
         1. Generate notes
-        2. Generate artifacts
-        3. Combine results
+        2. Return results
         """
         try:
             notes_result = self.generate_study_notes(source_ids, source_type, topic)
-            artifacts_result = self.generate_artifacts(source_ids, source_type)
 
-            if (
-                notes_result.get("status") != "success"
-                and artifacts_result.get("status") != "success"
-            ):
+            if notes_result.get("status") != "success":
                 return self.post_processor.format_error_response(
-                    "Both notes and artifacts generation failed"
+                    "Notes generation failed"
                 )
 
-            combined = {}
-
-            if notes_result.get("status") == "success":
-                combined.update(notes_result)
-
-            if artifacts_result.get("status") == "success":
-                combined["artifacts"] = artifacts_result["artifacts"]
-                if "metadata" not in combined:
-                    combined["metadata"] = {}
-                combined["metadata"].update(artifacts_result.get("metadata", {}))
-
-            combined["status"] = "success"
-            return combined
+            return notes_result
 
         except Exception as e:
             logger.error(f"Pipeline error in generate_complete_package: {str(e)}")

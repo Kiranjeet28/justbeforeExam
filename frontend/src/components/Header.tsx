@@ -241,7 +241,6 @@ export const Header: React.FC<HeaderProps> = ({
     animate: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.5, type: "spring", stiffness: 100 },
     },
   };
 
@@ -275,6 +274,7 @@ export const Header: React.FC<HeaderProps> = ({
         variants={headerVariants}
         initial="initial"
         animate="animate"
+        transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
         className={cn(
           "sticky top-0 z-50 w-full transition-all duration-300",
           isScrolled
@@ -457,8 +457,3 @@ export const Header: React.FC<HeaderProps> = ({
     </>
   );
 };
-
-export default Header;
-```
-
-Now, let me create a comprehensive example/hook file showing how to use this Header component:

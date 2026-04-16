@@ -371,27 +371,6 @@ export function useGenerateReport(options?: UseApiOptions<Report>) {
 }
 
 /**
- * Hook for transforming notes into artifacts
- */
-export function useTransformNotes(options?: UseApiOptions<any>) {
-  return useMutation(
-    (content: string) => apiClient.transformNotes(content),
-    options
-  );
-}
-
-/**
- * Hook for generating cheat sheet
- */
-export function useGenerateCheatSheet(options?: UseApiOptions<{ content: string }>) {
-  return useMutation(
-    ({ sourceIds, topic }: { sourceIds?: number[]; topic?: string }) =>
-      apiClient.generateCheatSheet(sourceIds, topic),
-    options
-  );
-}
-
-/**
  * Hook for streaming note generation with real-time updates
  */
 export function useGenerateNotesStreaming(

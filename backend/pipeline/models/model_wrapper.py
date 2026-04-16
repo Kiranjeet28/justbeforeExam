@@ -9,7 +9,6 @@ import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from rag.llm import SmartLLMSwitcher
-from services.artifact_service import ArtifactTransformationService
 
 try:
     from utils.config_manager import ConfigManager
@@ -287,35 +286,6 @@ class SmartLLMModel(BaseModel):
         return "smart-llm"
 
 
-class ArtifactModel(BaseModel):
-    """Artifact generation wrapper (mind map + cheat sheet) with config support."""
-
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """Initialize Artifact model with optional config."""
-        self.config = config or {}
-        self.service = ArtifactTransformationService()
-        logger.info("Initialized Artifact model")
-
-    def generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        try:
-            result = self.service.generate_study_artifacts(prompt)
-            return {
-                "content": result,
-                "model": self.name,
-                "status": "success" if result["success"] else "error",
-            }
-        except Exception as e:
-            logger.error(f"Artifact generation error: {str(e)}")
-            return {
-                "content": None,
-                "model": self.name,
-                "status": "error",
-                "error": str(e),
-            }
-
-    @property
-    def name(self) -> str:
-        return "artifact"
 
 
 class ModelRegistry:
@@ -395,16 +365,6 @@ def get_model_registry() -> ModelRegistry:
             logger.warning(f"Could not register SmartLLM model: {e}")
         except Exception as e:
             logger.error(f"Unexpected error registering SmartLLM model: {e}")
-
-        # Register Artifact model
-        try:
-            artifact_cfg = models_config.get("artifact", {})
-            _registry.register("artifact", ArtifactModel(artifact_cfg))
-            logger.info("Registered Artifact model")
-        except ValueError as e:
-            logger.warning(f"Could not register Artifact model: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error registering Artifact model: {e}")
 
         # Register HuggingFace models
         try:

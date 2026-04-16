@@ -26,22 +26,6 @@ class RateLimitExceeded(Exception):
 
 
 
-
-# New: Use model_dispatch for artifact generation
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model_dispatch import generateArtifacts
-
-class HuggingFaceRAG:
-    """Hugging Face RAG implementation using MiniMaxAI/MiniMax-M2.5 and Qwen/Qwen2.5-7B-Instruct"""
-    def __init__(self):
-        pass
-
-    def generate_artifacts(self, noteText: str):
-        """Generate Mind Map JSON and Cheat Sheet Markdown using new models"""
-        return generateArtifacts(noteText)
-
-
 class TextExtractor:
     """Utility for extracting text from various sources"""
     
@@ -718,43 +702,6 @@ class AIService:
         result["provider"] = self.provider_name
         return result
 
-    def generate_rag_notes(self, source_texts: list[str], topic: str = "") -> dict:
-        """
-        Generate comprehensive study notes using Hugging Face RAG only.
-        Falls back to mock response for development if API is unavailable.
-        
-        Args:
-            source_texts: List of text content from sources
-            topic: Optional topic/focus for the notes
-        
-        Returns:
-            Dict with 'notes' (markdown) and 'sources_count'
-        """
-        if not source_texts:
-            raise ValueError("source_texts cannot be empty")
-        
-        # Combine all texts and chunk them
-        combined_text = " ".join(source_texts)
-        
-        # Use new artifact generation logic
-        try:
-            rag = HuggingFaceRAG()
-            artifacts = rag.generate_artifacts(combined_text)
-            return {
-                "mind_map_json": artifacts["mind_map_json"],
-                "cheat_sheet_md": artifacts["cheat_sheet_md"],
-                "sources_count": len(source_texts),
-                "provider": "huggingface-new"
-            }
-        except Exception as e:
-            print(f"HuggingFace artifact error: {str(e)}")
-            print("Falling back to mock response for development")
-            return {
-                "mind_map_json": {},
-                "cheat_sheet_md": "",
-                "sources_count": len(source_texts),
-                "provider": "huggingface-mock"
-            }
     
     def _generate_mock_notes(self, content: str, topic: str = "") -> str:
         """Generate mock study notes from content for development/fallback"""

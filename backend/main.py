@@ -28,11 +28,6 @@ class ReportRequest(BaseModel):
     title: str | None = None  # Optional: report title
 
 
-class CheatSheetRequest(BaseModel):
-    source_ids: list[int] = []
-    topic: str = ""
-
-
 class YouTubeTranscriptRequest(BaseModel):
     url: str = Field(..., min_length=4, description="Full YouTube watch or share URL")
 
@@ -48,14 +43,6 @@ class GenerateV1Request(BaseModel):
 class AgenticRagRequest(BaseModel):
     topic: str = Field(..., min_length=1, description="Exam topic to prepare notes for")
     thread_id: str | None = None  # Optional: session continuity
-
-
-class TransformNotesRequest(BaseModel):
-    content: str = Field(
-        ...,
-        min_length=1,
-        description="Generated study notes to transform into artifacts",
-    )
 
 
 @asynccontextmanager
@@ -155,46 +142,6 @@ Format as clean, readable markdown."""
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(e),
-        ) from e
-
-
-@app.post("/api/transform-notes")
-def transform_notes_to_artifacts(payload: TransformNotesRequest) -> dict[str, Any]:
-    """
-    Transform generated study notes into specialized artifacts using the pipeline:
-
-    - Cheat Sheet: Bullet-pointed summary with LaTeX formulas
-    - Mind Map: Hierarchical JSON structure
-    """
-    try:
-        orchestrator = get_orchestrator()
-        result = orchestrator.generate_artifacts(content=payload.content)
-
-        if result["status"] != "success":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "message": "Artifact generation failed",
-                    "error": result.get("error", "Unknown error"),
-                },
-            )
-
-        return {
-            "success": True,
-            "artifacts": result["artifacts"],
-            "metadata": result["metadata"],
-        }
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Artifact transformation failed: {str(e)}",
         ) from e
 
 

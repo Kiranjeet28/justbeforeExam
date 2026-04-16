@@ -4,8 +4,6 @@ import { useState } from "react";
 import {
   Download,
   FileText,
-  GitGraph,
-  BookMarked,
   Copy,
   X,
   AlertCircle,
@@ -15,10 +13,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NotesView } from "./views";
-import { CheatSheetView } from "./views";
-import { MindMapView } from "./views/MindMapView";
 
-export type ViewType = "notes" | "cheatsheet" | "mindmap";
+export type ViewType = "notes";
 
 interface EnhancedNoteViewProps {
   noteData: string;
@@ -49,7 +45,7 @@ export default function EnhancedNoteView({
     }
   };
 
-  const handleExport = async (format: "pdf" | "markdown" | "png" | "svg") => {
+  const handleExport = async (format: "pdf" | "markdown") => {
     try {
       switch (format) {
         case "markdown":
@@ -57,14 +53,6 @@ export default function EnhancedNoteView({
           break;
         case "pdf":
           exportAsPDF();
-          break;
-        case "png":
-        case "svg":
-          if (currentView === "mindmap") {
-            exportMindMapAsImage(format);
-          } else {
-            console.warn(`Export to ${format} not available for this view`);
-          }
           break;
       }
       setExportOpen(false);
@@ -115,74 +103,18 @@ export default function EnhancedNoteView({
       printWindow.document.close();
     }
   };
-
-  const exportMindMapAsImage = async (format: "png" | "svg") => {
-    try {
-      const element = document.getElementById("mindmap-container");
-      if (!element) {
-        console.warn("Mind map container not found");
-        return;
-      }
-
-      if (format === "svg") {
-        const svg = element.querySelector("svg");
-        if (svg) {
-          const serializer = new XMLSerializer();
-          const svgString = serializer.serializeToString(svg);
-          const blob = new Blob([svgString], { type: "image/svg+xml" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `mindmap-${new Date().toISOString().split("T")[0]}.svg`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      } else if (format === "png") {
-        console.log(
-          "PNG export requires additional setup with html2canvas library",
-        );
-        alert(
-          "PNG export is available with additional dependencies. Saving as SVG instead.",
-        );
-        exportMindMapAsImage("svg");
-      }
-    } catch (err) {
-      console.error("Failed to export mind map:", err);
-    }
-  };
-
   const renderView = () => {
-    switch (currentView) {
-      case "cheatsheet":
-        return <CheatSheetView content={noteData} />;
-      case "mindmap":
-        return <MindMapView content={noteData} />;
-      case "notes":
-      default:
-        return <NotesView content={noteData} />;
-    }
+    return <NotesView content={noteData} />;
   };
 
   const getExportFormats = (): Array<{
-    format: "pdf" | "markdown" | "png" | "svg";
+    format: "pdf" | "markdown";
     label: string;
   }> => {
-    switch (currentView) {
-      case "mindmap":
-        return [
-          { format: "svg", label: "SVG" },
-          { format: "png", label: "PNG" },
-        ];
-      case "cheatsheet":
-      case "notes":
-      default:
-        return [
-          { format: "markdown", label: "Markdown" },
-          { format: "pdf", label: "PDF" },
-        ];
-    }
+    return [
+      { format: "markdown", label: "Markdown" },
+      { format: "pdf", label: "PDF" },
+    ];
   };
 
   // Loading State
@@ -313,23 +245,16 @@ export default function EnhancedNoteView({
         >
           {[
             { id: "notes" as const, label: "Notes", icon: FileText },
-            {
-              id: "cheatsheet" as const,
-              label: "Cheat Sheet",
-              icon: BookMarked,
-            },
-            { id: "mindmap" as const, label: "Mind Map", icon: GitGraph },
           ].map((tab) => (
             <motion.button
               key={tab.id}
               onClick={() => setCurrentView(tab.id)}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                currentView === tab.id
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30"
-                  : "bg-slate-700/20 text-slate-300 hover:bg-slate-700/40 hover:text-slate-200"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${currentView === tab.id
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30"
+                : "bg-slate-700/20 text-slate-300 hover:bg-slate-700/40 hover:text-slate-200"
+                }`}
             >
               <tab.icon size={18} />
               <span>{tab.label}</span>
@@ -356,11 +281,10 @@ export default function EnhancedNoteView({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleCopyToClipboard}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                copied
-                  ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30"
-                  : "bg-slate-700/40 text-slate-300 hover:bg-slate-700/60 hover:text-slate-100"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${copied
+                ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30"
+                : "bg-slate-700/40 text-slate-300 hover:bg-slate-700/60 hover:text-slate-100"
+                }`}
             >
               <motion.div
                 animate={{ rotate: copied ? 360 : 0 }}
