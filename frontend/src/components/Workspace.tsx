@@ -1035,6 +1035,12 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                 <div className="prose prose-invert max-w-none space-y-6">
                   <ReactMarkdown
                     components={{
+                      h1: ({ ...props }) => (
+                        <h1
+                          className="mt-10 mb-6 text-3xl font-bold text-blue-300"
+                          {...props}
+                        />
+                      ),
                       h2: ({ ...props }) => (
                         <h2
                           className="mt-8 mb-4 text-2xl font-bold text-violet-300 flex items-center gap-3"
@@ -1077,18 +1083,36 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                           {...props}
                         />
                       ),
-                      code: ({ ...props }) => (
-                        <code
-                          className="rounded bg-slate-800/80 px-2 py-1 font-mono text-sm text-rose-200 border border-slate-700/50"
-                          {...props}
-                        />
+                      em: ({ ...props }) => (
+                        <em className="italic text-cyan-200" {...props} />
                       ),
+                      code: ({
+                        inline,
+                        children,
+                        ...props
+                      }: {
+                        inline?: boolean;
+                        children?: React.ReactNode;
+                      } & React.HTMLAttributes<HTMLElement>) =>
+                        inline ? (
+                          <code
+                            className="rounded bg-slate-800/80 px-2 py-1 font-mono text-sm text-rose-200 border border-slate-700/50"
+                            {...props}
+                          >
+                            {children}
+                          </code>
+                        ) : (
+                          <pre className="bg-slate-800/80 text-rose-200 p-4 rounded font-mono text-sm overflow-x-auto my-4 border border-slate-700/50">
+                            <code {...props}>{children}</code>
+                          </pre>
+                        ),
                       blockquote: ({ ...props }) => (
                         <blockquote
                           className="border-l-4 border-violet-500/50 bg-violet-500/10 pl-4 py-2 italic text-slate-300 my-4"
                           {...props}
                         />
                       ),
+                      hr: () => <hr className="my-6 border-slate-700" />,
                     }}
                   >
                     {ragMarkdown}

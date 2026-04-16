@@ -340,6 +340,12 @@ export function TransformNotes({
             <div className="prose prose-invert max-w-none">
               <ReactMarkdown
                 components={{
+                  h1: ({ ...props }) => (
+                    <h1
+                      className="mt-6 mb-4 text-2xl font-bold text-purple-300"
+                      {...props}
+                    />
+                  ),
                   h2: ({ ...props }) => (
                     <h2
                       className="mt-4 mb-2 text-lg font-bold text-purple-300"
