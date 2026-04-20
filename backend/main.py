@@ -6,11 +6,29 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from google.api_core import exceptions as google_api_exceptions
-from models import Report, Source
+from models import LinkUsage, Quiz, Report, Source, UserLink
 from pipeline.orchestrator import get_orchestrator
 from pydantic import BaseModel, Field
 from rag.agent import run_agent
-from schemas import ReportCreate, ReportRead, SourceCreate, SourceRead
+from rag.personalized_links import (
+    get_personalized_links_manager,
+    preprocess_and_store_link,
+    retrieve_personalized_links,
+    track_link_access,
+)
+from rag.quiz_generator import generate_quiz, save_quiz
+from schemas import (
+    QuizGenerateRequest,
+    QuizListResponse,
+    QuizRead,
+    ReportCreate,
+    ReportRead,
+    SourceCreate,
+    SourceRead,
+    UserLinkCreate,
+    UserLinkListResponse,
+    UserLinkRead,
+)
 from services import upload_router
 from services.youtube_transcript_service import (
     fetch_youtube_transcript_bundle,
@@ -43,6 +61,13 @@ class GenerateV1Request(BaseModel):
 class AgenticRagRequest(BaseModel):
     topic: str = Field(..., min_length=1, description="Exam topic to prepare notes for")
     thread_id: str | None = None  # Optional: session continuity
+
+
+class CheatSheetRequest(BaseModel):
+    source_ids: list[int] = Field(
+        ..., description="List of source IDs to generate cheat sheet from"
+    )
+    topic: str | None = None  # Optional: specific topic focus
 
 
 @asynccontextmanager
@@ -444,7 +469,7 @@ async def generate_notes_streaming(payload: AgenticRagRequest):
     def generate_stream():
         try:
             # Run the agent
-            result = run_agent(payload.topic, payload.thread_id)
+            result = run_agent(payload.topic, payload.thread_id or "")
 
             # Stream status updates first
             for status_msg in result.get("status_updates", []):
@@ -474,7 +499,7 @@ def generate_notes_with_agent(payload: AgenticRagRequest) -> dict[str, object]:
         Complete result including notes, status updates, and metadata
     """
     try:
-        result = run_agent(payload.topic, payload.thread_id)
+        result = run_agent(payload.topic, payload.thread_id or "")
 
         return {
             "success": True,
@@ -502,3 +527,212 @@ def generate_notes_with_agent(payload: AgenticRagRequest) -> dict[str, object]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}",
         )
+
+
+@app.post(
+    "/api/user-links", response_model=UserLinkRead, status_code=status.HTTP_201_CREATED
+)
+def add_user_link(payload: UserLinkCreate, db: Session = Depends(get_db)) -> UserLink:
+    """Add and process a personalized link for a user."""
+    try:
+        result = preprocess_and_store_link(payload.user_id, payload.url, payload.title)
+
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["error"],
+            )
+
+        # Fetch the created link
+        link = db.query(UserLink).filter(UserLink.id == result["link_id"]).first()
+        if not link:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Link created but not found",
+            )
+
+        return link
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add link: {str(e)}",
+        )
+
+
+@app.get("/api/user-links", response_model=UserLinkListResponse)
+def get_user_links(
+    user_id: str,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 20,
+    topic: str | None = None,
+) -> UserLinkListResponse:
+    """Retrieve user's links with optional topic filtering."""
+    query = db.query(UserLink).filter(UserLink.user_id == user_id)
+
+    if topic:
+        query = query.filter(UserLink.topic.ilike(f"%{topic}%"))
+
+    total = query.count()
+    links = (
+        query.order_by(UserLink.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return UserLinkListResponse(
+        items=links, total=total, page=page, page_size=page_size
+    )
+
+
+@app.get("/api/user-links/{link_id}", response_model=UserLinkRead)
+def get_user_link(
+    link_id: int, user_id: str, db: Session = Depends(get_db)
+) -> UserLink:
+    """Retrieve a specific user link."""
+    link = (
+        db.query(UserLink)
+        .filter(UserLink.id == link_id, UserLink.user_id == user_id)
+        .first()
+    )
+
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Link not found",
+        )
+
+    # Track access
+    track_link_access(user_id, link_id)
+
+    return link
+
+
+@app.delete("/api/user-links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_link(
+    link_id: int, user_id: str, db: Session = Depends(get_db)
+) -> Response:
+    """Delete a user link."""
+    manager = get_personalized_links_manager()
+    success = manager.delete_link(user_id, link_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Link not found or deletion failed",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post("/api/user-links/search")
+def search_user_links(
+    user_id: str,
+    query: str = Field(..., min_length=1, description="Search query"),
+    topic: str | None = None,
+    top_k: int = 10,
+) -> dict[str, object]:
+    """Search personalized links using vector similarity."""
+    try:
+        results = retrieve_personalized_links(user_id, query, topic, top_k)
+
+        return {
+            "success": True,
+            "query": query,
+            "results": results,
+            "total": len(results),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}",
+        )
+
+
+@app.post("/api/generate-quiz")
+def generate_quiz_endpoint(payload: QuizGenerateRequest) -> dict[str, object]:
+    """
+    Generate a quiz using RAG from database sources.
+
+    Input: topic or notes string
+    Returns: structured quiz JSON with mcqs, short_questions, source_mapping
+    """
+    try:
+        quiz_data = generate_quiz(payload.input)
+
+        return {
+            "success": True,
+            "quiz": quiz_data,
+            "topic": payload.input,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Quiz generation failed: {str(e)}",
+        )
+
+
+@app.post("/api/quizzes", response_model=QuizRead, status_code=status.HTTP_201_CREATED)
+def save_quiz_endpoint(
+    payload: QuizGenerateRequest, db: Session = Depends(get_db)
+) -> Quiz:
+    """Generate and save a quiz to the database."""
+    try:
+        quiz_data = generate_quiz(payload.input)
+        quiz = save_quiz(payload.input, quiz_data)
+
+        return quiz
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Quiz generation failed: {str(e)}",
+        )
+
+
+@app.get("/api/quizzes", response_model=list[QuizRead])
+def get_quizzes(db: Session = Depends(get_db), limit: int = 50) -> list[Quiz]:
+    """Retrieve saved quizzes (most recent first)."""
+    return db.query(Quiz).order_by(Quiz.created_at.desc()).limit(limit).all()
+
+
+@app.get("/api/quizzes/{quiz_id}", response_model=QuizRead)
+def get_quiz(quiz_id: int, db: Session = Depends(get_db)) -> Quiz:
+    """Retrieve a specific quiz by ID."""
+    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+    return quiz
+
+
+@app.delete("/api/quizzes/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_quiz(quiz_id: int, db: Session = Depends(get_db)) -> Response:
+    """Delete a saved quiz."""
+    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+    db.delete(quiz)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

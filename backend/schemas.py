@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime
 from typing import Literal
@@ -248,6 +249,98 @@ class ReportUpdate(BaseModel):
     )
 
 
+class QuizGenerateRequest(BaseModel):
+    """
+    Schema for generating a quiz.
+
+    Input is either a topic or notes string.
+    """
+
+    input: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="Topic or notes to generate quiz from",
+        examples=["Machine Learning Basics", "Notes on Python data structures..."],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "input": "Python programming fundamentals",
+            }
+        }
+    )
+
+
+class QuizRead(BaseModel):
+    """
+    Schema for reading/returning a quiz.
+
+    Returned by the API when fetching existing quizzes.
+    """
+
+    id: int = Field(..., description="Unique identifier for the quiz")
+    topic: str = Field(..., description="Topic used to generate the quiz")
+    questions: dict = Field(..., description="Quiz questions (MCQs and short answers)")
+    source_refs: dict | None = Field(default=None, description="Source references")
+    created_at: datetime = Field(
+        ..., description="UTC timestamp when quiz was generated"
+    )
+
+    @field_validator("questions", mode="before")
+    @classmethod
+    def parse_questions(cls, v: str | dict) -> dict:
+        """Parse questions JSON string to dict."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    @field_validator("source_refs", mode="before")
+    @classmethod
+    def parse_source_refs(cls, v: str | dict | None) -> dict | None:
+        """Parse source_refs JSON string to dict."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QuizUpdate(BaseModel):
+    """
+    Schema for updating an existing quiz.
+
+    All fields are optional - only provided fields will be updated.
+    """
+
+    topic: str | None = Field(
+        default=None,
+        max_length=500,
+        description="New topic (if updating)",
+    )
+    questions: dict | None = Field(
+        default=None, description="New questions (if updating)"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"topic": "Updated Quiz Topic"}}
+    )
+
+
+class QuizListResponse(BaseModel):
+    """
+    Schema for listing quizzes with pagination.
+    """
+
+    items: list[QuizRead] = Field(..., description="List of quizzes")
+    total: int = Field(..., ge=0, description="Total number of quizzes available")
+    page: int = Field(default=1, ge=1, description="Current page number")
+    page_size: int = Field(default=20, ge=1, description="Number of items per page")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SourceListResponse(BaseModel):
     """
     Schema for listing sources with pagination.
@@ -268,6 +361,121 @@ class ReportListResponse(BaseModel):
 
     items: list[ReportRead] = Field(..., description="List of reports")
     total: int = Field(..., ge=0, description="Total number of reports available")
+    page: int = Field(default=1, ge=1, description="Current page number")
+    page_size: int = Field(default=20, ge=1, description="Number of items per page")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QuizListResponse(BaseModel):
+    """
+    Schema for listing quizzes with pagination.
+    """
+
+    items: list[QuizRead] = Field(..., description="List of quizzes")
+    total: int = Field(..., ge=0, description="Total number of quizzes available")
+    page: int = Field(default=1, ge=1, description="Current page number")
+    page_size: int = Field(default=20, ge=1, description="Number of items per page")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserLinkCreate(BaseModel):
+    """
+    Schema for adding a new user link.
+
+    Link will be validated, processed, and stored with embeddings.
+    """
+
+    user_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="User identifier",
+        examples=["user123"],
+    )
+    url: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="The link URL to store",
+        examples=["https://example.com/article"],
+    )
+    title: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional title for the link",
+        examples=["Machine Learning Basics"],
+    )
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        """Basic URL validation."""
+        v = v.strip()
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "user_id": "user123",
+                "url": "https://example.com/ml-basics",
+                "title": "Machine Learning Basics",
+            }
+        }
+    )
+
+
+class UserLinkRead(BaseModel):
+    """
+    Schema for reading/returning a user link.
+
+    Returned by the API when fetching existing links.
+    """
+
+    id: int = Field(..., description="Unique identifier for the link")
+    user_id: str = Field(..., description="User identifier")
+    url: str = Field(..., description="The link URL")
+    title: str | None = Field(default=None, description="Link title")
+    topic: str | None = Field(default=None, description="Detected topic")
+    content: str | None = Field(default=None, description="Extracted content preview")
+    created_at: datetime = Field(..., description="UTC timestamp when link was added")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserLinkUpdate(BaseModel):
+    """
+    Schema for updating an existing user link.
+
+    All fields are optional - only provided fields will be updated.
+    """
+
+    title: str | None = Field(
+        default=None,
+        max_length=500,
+        description="New title (if updating)",
+    )
+    topic: str | None = Field(
+        default=None,
+        max_length=200,
+        description="New topic (if updating)",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"title": "Updated Link Title"}}
+    )
+
+
+class UserLinkListResponse(BaseModel):
+    """
+    Schema for listing user links with pagination.
+    """
+
+    items: list[UserLinkRead] = Field(..., description="List of user links")
+    total: int = Field(..., ge=0, description="Total number of links available")
     page: int = Field(default=1, ge=1, description="Current page number")
     page_size: int = Field(default=20, ge=1, description="Number of items per page")
 
