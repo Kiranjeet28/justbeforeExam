@@ -441,7 +441,18 @@ class UserLinkRead(BaseModel):
     title: str | None = Field(default=None, description="Link title")
     topic: str | None = Field(default=None, description="Detected topic")
     content: str | None = Field(default=None, description="Extracted content preview")
+    weak_topics: List[str] | None = Field(
+        default=None, description="Topics user struggles with from this link"
+    )
     created_at: datetime = Field(..., description="UTC timestamp when link was added")
+
+    @field_validator("weak_topics", mode="before")
+    @classmethod
+    def parse_weak_topics(cls, v):
+        """Parse weak_topics JSON string to list."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -463,6 +474,10 @@ class UserLinkUpdate(BaseModel):
         max_length=200,
         description="New topic (if updating)",
     )
+    weak_topics: List[str] | None = Field(
+        default=None,
+        description="Updated list of weak topics (if updating)",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={"example": {"title": "Updated Link Title"}}
@@ -480,6 +495,57 @@ class UserLinkListResponse(BaseModel):
     page_size: int = Field(default=20, ge=1, description="Number of items per page")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MCQItem(BaseModel):
+    """
+    Schema for a single multiple-choice question.
+    """
+
+    question: str = Field(..., min_length=10, description="The question text")
+    options: List[str] = Field(
+        ..., min_items=4, max_items=4, description="Four options labeled A, B, C, D"
+    )
+    correct_answer: str = Field(
+        ..., pattern=r"^[A-D]$", description="Correct answer letter"
+    )
+    explanation: str = Field(
+        ..., min_length=10, description="Explanation of the correct answer"
+    )
+
+    @field_validator("options")
+    @classmethod
+    def validate_options(cls, v):
+        if not all(opt.startswith(("A)", "B)", "C)", "D)")) for opt in v):
+            raise ValueError("Options must be labeled A, B, C, D")
+        return v
+
+
+class ShortAnswerItem(BaseModel):
+    """
+    Schema for a single short-answer question.
+    """
+
+    question: str = Field(..., min_length=10, description="The question text")
+    expected_answer: str = Field(
+        ..., min_length=10, description="Expected concise answer"
+    )
+    key_points: List[str] = Field(
+        ..., min_items=1, description="Key points to cover in answer"
+    )
+
+
+class QuizStructure(BaseModel):
+    """
+    Schema for complete quiz structure.
+    """
+
+    mcqs: List[MCQItem] = Field(
+        ..., min_items=5, max_items=10, description="Multiple choice questions"
+    )
+    short_questions: List[ShortAnswerItem] = Field(
+        ..., min_items=2, max_items=3, description="Short answer questions"
+    )
 
 
 class ErrorResponse(BaseModel):

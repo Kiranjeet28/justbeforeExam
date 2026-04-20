@@ -1,6 +1,7 @@
 """RAG-based Quiz Generator using vector store from database sources."""
 
 import json
+import re
 from typing import Dict, List
 
 from database import SessionLocal
@@ -8,6 +9,8 @@ from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from models import Quiz
+from pydantic import ValidationError
+from schemas import QuizStructure
 
 from rag.llm import get_completion
 from rag.tools import initialize_vector_store_from_db
@@ -58,7 +61,7 @@ class QuizGenerator:
         }
 
     def _retrieve_relevant_chunks(self, query: str) -> List[Document]:
-        """Retrieve relevant chunks from vector store."""
+        """Retrieve relevant chunks from vector store with fallback."""
         # Query vector store for top 5-10 chunks
         retriever = self.vector_store.as_retriever(
             search_type="similarity",
@@ -66,6 +69,18 @@ class QuizGenerator:
         )
 
         results = retriever.invoke(query)
+
+        if not results:
+            # Fallback: broader search without score threshold
+            retriever = self.vector_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 8, "score_threshold": 0.0},
+            )
+            results = retriever.invoke(query)
+
+            if not results:
+                raise ValueError("No relevant context found - try different query")
+
         return results
 
     def _build_context(self, input_text: str, retrieved_chunks: List[Document]) -> str:
@@ -99,7 +114,7 @@ class QuizGenerator:
         return context
 
     def _generate_quiz_with_llm(self, context: str) -> Dict:
-        """Generate quiz using LLM."""
+        """Generate quiz using LLM with retry and validation."""
         prompt = f"""
 Based on the following context, generate a quiz with multiple-choice questions (MCQs) and short-answer questions.
 
@@ -109,7 +124,7 @@ Context:
 Requirements:
 - Generate 5-10 MCQs
 - Generate 2-3 short-answer questions
-- Each question must target key concepts from the context
+- Each question must target key concept
 - Questions should be clear and exam-focused
 - No vague or ambiguous questions
 - No duplication of questions
@@ -137,25 +152,36 @@ Short Answer Format (JSON array):
 Return only valid JSON with keys "mcqs" and "short_questions".
 """
 
-        response = get_completion(prompt)
-        if response["status"] != "success":
-            raise Exception(
-                f"LLM call failed: {response.get('reason', 'Unknown error')}"
-            )
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = get_completion(prompt)
+                if response["status"] != "success":
+                    if attempt < max_retries - 1:
+                        continue
+                    raise Exception(f"LLM failed after {max_retries} attempts")
 
-        try:
-            quiz_data = json.loads(response["content"])
-            return quiz_data
-        except json.JSONDecodeError:
-            # Fallback: try to extract JSON from response
-            content = response["content"]
-            start = content.find("{")
-            end = content.rfind("}") + 1
-            if start != -1 and end != -1:
-                json_str = content[start:end]
-                return json.loads(json_str)
-            else:
-                raise Exception("Failed to parse LLM response as JSON")
+                content = response["content"].strip()
+
+                # Extract JSON from response
+                json_match = re.search(r"\{.*\}", content, re.DOTALL)
+                if not json_match:
+                    if attempt < max_retries - 1:
+                        continue
+                    raise Exception("No JSON found in LLM response")
+
+                quiz_data = json.loads(json_match.group())
+
+                # Validate structure
+                QuizStructure(**quiz_data)
+                return quiz_data
+
+            except (json.JSONDecodeError, ValidationError, Exception) as e:
+                if attempt == max_retries - 1:
+                    raise Exception(
+                        f"Quiz generation failed after {max_retries} retries: {str(e)}"
+                    )
+                continue
 
     def _create_source_mapping(
         self, quiz_data: Dict, retrieved_chunks: List[Document]

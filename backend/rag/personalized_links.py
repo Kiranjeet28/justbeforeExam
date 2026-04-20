@@ -3,8 +3,8 @@
 import hashlib
 import json
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
@@ -36,6 +36,7 @@ class PersonalizedLinksManager:
             chunk_overlap=100,
             separators=["\n## ", "\n### ", "\n\n", "\n", " ", ""],
         )
+        self._topic_cache = {}  # Cache for LLM topic detection
 
     def _get_pinecone_api_key(self) -> str:
         """Get Pinecone API key from environment."""
@@ -47,14 +48,41 @@ class PersonalizedLinksManager:
         return api_key
 
     def _ensure_index(self):
-        """Create Pinecone index if it doesn't exist."""
-        if self.index_name not in self.pc.list_indexes().names():
+        """Create Pinecone index if it doesn't exist with error handling."""
+        try:
+            indexes = self.pc.list_indexes()
+            if self.index_name in indexes.names():
+                # Verify configuration
+                index_info = self.pc.describe_index(self.index_name)
+                if (
+                    index_info.dimension != self.dimension
+                    or index_info.metric != "cosine"
+                ):
+                    raise ValueError(
+                        f"Index {self.index_name} has incompatible configuration"
+                    )
+                return
+
+            # Create with error handling
             self.pc.create_index(
                 name=self.index_name,
                 dimension=self.dimension,
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
+
+            # Wait for readiness
+            import time
+
+            for _ in range(30):
+                if self.pc.describe_index(self.index_name).status == "Ready":
+                    break
+                time.sleep(1)
+            else:
+                raise TimeoutError("Pinecone index creation timed out")
+
+        except Exception as e:
+            raise RuntimeError(f"Pinecone index setup failed: {str(e)}")
 
     def preprocess_link(
         self, user_id: str, url: str, title: Optional[str] = None
@@ -176,27 +204,47 @@ class PersonalizedLinksManager:
             text = " ".join(chunk for chunk in chunks if chunk)
 
             return text
-        except:
+        except Exception:
             return ""
 
     def _detect_topic(self, content: str) -> str:
-        """Detect topic from content using LLM."""
-        prompt = f"""
-Analyze the following text and determine the main topic/subject area.
-Return only a short topic name (2-5 words) that best describes the content.
+        """Detect topic from content using keyword matching with LLM fallback."""
+        # Fast keyword matching first
+        content_lower = content.lower()
 
-Text:
-{content[:2000]}...
+        topic_map = {
+            "Machine Learning": [
+                "ml",
+                "machine learning",
+                "neural",
+                "deep learning",
+                "ai",
+            ],
+            "Python": ["python", "programming", "code", "function", "class"],
+            "Database": ["sql", "database", "query", "table", "join"],
+            "Web Development": ["html", "css", "javascript", "react", "api"],
+            "Data Science": ["pandas", "numpy", "matplotlib", "statistics", "analysis"],
+        }
 
-Topic:"""
+        for topic, keywords in topic_map.items():
+            if any(kw in content_lower for kw in keywords):
+                return topic
 
+        # Fallback to LLM (cached by content hash)
+        content_hash = hashlib.md5(content[:1000].encode()).hexdigest()
+        if content_hash in self._topic_cache:
+            return self._topic_cache[content_hash]
+
+        prompt = f"Main topic (2-5 words): {content[:500]}..."
         response = get_completion(prompt)
-        if response["status"] == "success":
-            topic = response["content"].strip()
-            # Clean up response
-            topic = re.sub(r"[^\w\s-]", "", topic).strip()
-            return topic[:50] if topic else "General"
-        return "General"
+        topic = (
+            response["content"].strip()[:50]
+            if response["status"] == "success"
+            else "General"
+        )
+
+        self._topic_cache[content_hash] = topic
+        return topic
 
     def _normalize_text(self, text: str) -> str:
         """Normalize text: clean and prepare for chunking."""
@@ -251,6 +299,7 @@ Topic:"""
                 title=data["title"],
                 topic=data["topic"],
                 content=data["content"],
+                weak_topics=json.dumps([]),  # Initialize as empty list
             )
             db.add(user_link)
             db.commit()
@@ -302,6 +351,7 @@ Topic:"""
                 "chunk_index": i,
                 "total_chunks": len(chunks),
                 "text": chunk,
+                "weak_topics": [],  # Initialize for future tracking
             }
 
             vectors.append(
@@ -362,51 +412,44 @@ Topic:"""
         return ranked_results
 
     def _apply_history_ranking(self, user_id: str, matches: List[Dict]) -> List[Dict]:
-        """Apply history-based ranking to boost frequently/recently used links."""
+        """Apply history-based ranking with batch queries and optimized scoring."""
+        # Batch fetch usage data for only relevant links
+        link_ids = [int(match["metadata"]["id"].split("_")[0]) for match in matches]
+        unique_link_ids = list(set(link_ids))
+
         db = SessionLocal()
         try:
-            # Get usage data for user's links
-            usage_data = {}
-            usages = db.query(LinkUsage).filter(LinkUsage.user_id == user_id).all()
-            for usage in usages:
-                usage_data[usage.user_link_id] = {
-                    "access_count": usage.access_count,
-                    "last_accessed": usage.last_accessed,
-                }
+            usages = (
+                db.query(LinkUsage)
+                .filter(
+                    LinkUsage.user_link_id.in_(unique_link_ids),
+                    LinkUsage.user_id == user_id,
+                )
+                .all()
+            )
 
-            # Rank results
-            ranked = []
+            usage_dict = {u.user_link_id: u for u in usages}
+
+            now = datetime.utcnow()
             for match in matches:
                 metadata = match["metadata"]
                 link_id = int(metadata["id"].split("_")[0])
+                usage = usage_dict.get(link_id)
 
-                # Calculate boost score
                 boost = 0
-                if link_id in usage_data:
-                    usage = usage_data[link_id]
-                    # Boost for access count (log scale)
-                    boost += min(usage["access_count"] * 0.1, 1.0)
-                    # Boost for recency (days since last access)
-                    days_since = (datetime.utcnow() - usage["last_accessed"]).days
-                    recency_boost = max(
-                        0, 1.0 - (days_since / 30.0)
-                    )  # Decay over 30 days
-                    boost += recency_boost * 0.5
+                if usage:
+                    # Frequency boost (diminishing returns)
+                    boost += min(usage.access_count**0.5 * 0.2, 1.0)
 
-                # Combine similarity and boost
-                final_score = match["score"] + boost
+                    # Recency boost (exponential decay)
+                    days_old = (now - usage.last_accessed).total_seconds() / 86400
+                    boost += max(0, 0.8 * (0.95**days_old))
 
-                ranked.append(
-                    {
-                        "score": final_score,
-                        "metadata": metadata,
-                        "boost": boost,
-                    }
-                )
+                match["score"] += boost
+                match["boost"] = boost
 
-            # Sort by final score
-            ranked.sort(key=lambda x: x["score"], reverse=True)
-            return ranked
+            matches.sort(key=lambda x: x["score"], reverse=True)
+            return matches
 
         finally:
             db.close()

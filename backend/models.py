@@ -176,6 +176,11 @@ class UserLink(Base):
     title = Column(String(500), nullable=True, comment="Extracted or provided title")
     topic = Column(String(200), nullable=True, index=True, comment="Detected topic")
     content = Column(Text, nullable=True, comment="Extracted clean text content")
+    weak_topics = Column(
+        Text,
+        nullable=True,
+        comment="JSON list of topics user struggles with from this link",
+    )
     created_at = Column(
         DateTime,
         default=datetime.utcnow,
