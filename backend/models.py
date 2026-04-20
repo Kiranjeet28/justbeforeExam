@@ -235,3 +235,79 @@ class LinkUsage(Base):
     def __repr__(self) -> str:
         """String representation of LinkUsage."""
         return f"<LinkUsage(id={self.id}, user_link_id={self.user_link_id}, access_count={self.access_count})>"
+
+
+class User(Base):
+    """
+    Represents a user for tracking weak areas and quiz performance.
+    """
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        String(100),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment="Unique user identifier",
+    )
+    weak_topics = Column(
+        Text,
+        nullable=True,
+        comment="JSON list of topics the user struggles with",
+    )
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+        comment="UTC timestamp when user was created",
+    )
+
+    def __repr__(self) -> str:
+        """String representation of User."""
+        return f"<User(id={self.id}, user_id={self.user_id})>"
+
+
+class QuizResult(Base):
+    """
+    Stores quiz evaluation results for a user.
+    """
+
+    __tablename__ = "quiz_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quiz_id = Column(
+        Integer, nullable=False, index=True, comment="Foreign key to quizzes.id"
+    )
+    user_id = Column(String(100), nullable=False, index=True, comment="User identifier")
+    answers = Column(
+        Text,
+        nullable=False,
+        comment="JSON of user's submitted answers",
+    )
+    score = Column(Integer, nullable=False, comment="Total correct answers")
+    accuracy = Column(Float, nullable=False, comment="Accuracy percentage")
+    mistakes = Column(
+        Text,
+        nullable=True,
+        comment="JSON list of incorrect questions with topics",
+    )
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+        comment="UTC timestamp when quiz was evaluated",
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_quiz_result_user_quiz", "user_id", "quiz_id"),
+        Index("ix_quiz_result_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        """String representation of QuizResult."""
+        return f"<QuizResult(id={self.id}, quiz_id={self.quiz_id}, user_id={self.user_id}, score={self.score})>"

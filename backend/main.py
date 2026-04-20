@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -6,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from google.api_core import exceptions as google_api_exceptions
-from models import LinkUsage, Quiz, Report, Source, UserLink
+from models import LinkUsage, Quiz, QuizResult, Report, Source, User, UserLink
 from pipeline.orchestrator import get_orchestrator
 from pydantic import BaseModel, Field
 from rag.agent import run_agent
@@ -16,11 +17,14 @@ from rag.personalized_links import (
     retrieve_personalized_links,
     track_link_access,
 )
+from rag.quiz_evaluation import evaluate_quiz_answers
 from rag.quiz_generator import generate_quiz, save_quiz
 from schemas import (
+    QuizEvaluation,
     QuizGenerateRequest,
     QuizListResponse,
     QuizRead,
+    QuizSubmission,
     ReportCreate,
     ReportRead,
     SourceCreate,
@@ -28,6 +32,8 @@ from schemas import (
     UserLinkCreate,
     UserLinkListResponse,
     UserLinkRead,
+    UserRead,
+    UserUpdate,
 )
 from services import upload_router
 from services.youtube_transcript_service import (
@@ -652,6 +658,91 @@ def search_user_links(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Search failed: {str(e)}",
         )
+
+
+@app.post("/api/quiz/evaluate", response_model=QuizEvaluation)
+def evaluate_quiz_endpoint(payload: QuizSubmission) -> QuizEvaluation:
+    """Evaluate quiz answers and detect weak areas."""
+    try:
+        result = evaluate_quiz_answers(
+            payload.user_id, payload.quiz_id, payload.answers
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Evaluation failed: {str(e)}",
+        )
+
+
+@app.get("/api/users/{user_id}", response_model=UserRead)
+def get_user(user_id: str, db: Session = Depends(get_db)) -> User:
+    """Get user information including weak topics."""
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
+
+
+@app.put("/api/users/{user_id}", response_model=UserRead)
+def update_user(
+    user_id: str, payload: UserUpdate, db: Session = Depends(get_db)
+) -> User:
+    """Update user information."""
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if payload.weak_topics is not None:
+        user.weak_topics = json.dumps(payload.weak_topics)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.get("/api/quiz-results", response_model=list[dict])
+def get_quiz_results(
+    user_id: str,
+    db: Session = Depends(get_db),
+    limit: int = 10,
+) -> list[dict]:
+    """Get user's quiz results."""
+    results = (
+        db.query(QuizResult)
+        .filter(QuizResult.user_id == user_id)
+        .order_by(QuizResult.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Parse JSON fields for response
+    response = []
+    for r in results:
+        response.append(
+            {
+                "id": r.id,
+                "quiz_id": r.quiz_id,
+                "score": r.score,
+                "accuracy": r.accuracy,
+                "answers": json.loads(r.answers),
+                "mistakes": json.loads(r.mistakes) if r.mistakes else [],
+                "created_at": r.created_at,
+            }
+        )
+
+    return response
 
 
 @app.post("/api/generate-quiz")

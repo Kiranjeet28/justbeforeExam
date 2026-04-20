@@ -582,3 +582,124 @@ class HealthCheckResponse(BaseModel):
         default_factory=datetime.utcnow,
         description="When the health check was performed",
     )
+
+
+class QuizSubmission(BaseModel):
+    """
+    Schema for submitting quiz answers.
+    """
+
+    user_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="User identifier",
+        examples=["user123"],
+    )
+    quiz_id: int = Field(..., description="Quiz ID to evaluate", examples=[1])
+    answers: Dict[str, str] = Field(
+        ...,
+        description="Dictionary of question_id: user_answer",
+        examples=[{"mcq_0": "A", "sa_1": "Inheritance allows code reuse"}],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "user_id": "user123",
+                "quiz_id": 1,
+                "answers": {"mcq_0": "B", "sa_1": "Polymorphism"},
+            }
+        }
+    )
+
+
+class QuizEvaluation(BaseModel):
+    """
+    Schema for quiz evaluation results.
+    """
+
+    score: int = Field(..., description="Number of correct answers", ge=0)
+    accuracy: float = Field(..., description="Accuracy percentage", ge=0.0, le=100.0)
+    mistakes: List[Dict] = Field(
+        ...,
+        description="List of incorrect questions with details",
+        examples=[
+            [
+                {
+                    "question_id": "mcq_0",
+                    "topic": "Python",
+                    "concept": "Data Types",
+                    "user_answer": "B",
+                    "correct_answer": "A",
+                }
+            ]
+        ],
+    )
+    weak_topics: List[str] = Field(
+        ...,
+        description="Detected weak topics",
+        examples=[["Python", "Algorithms"]],
+    )
+    mistake_summary: Dict = Field(
+        ...,
+        description="Summary of mistakes by topic",
+        examples=[{"Python": 2, "Algorithms": 1}],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "score": 7,
+                "accuracy": 70.0,
+                "mistakes": [
+                    {
+                        "question_id": "mcq_0",
+                        "topic": "Python",
+                        "concept": "Lists",
+                        "user_answer": "B",
+                        "correct_answer": "A",
+                    }
+                ],
+                "weak_topics": ["Python"],
+                "mistake_summary": {"Python": 1},
+            }
+        }
+    )
+
+
+class UserRead(BaseModel):
+    """
+    Schema for reading user information.
+    """
+
+    id: int = Field(..., description="Unique identifier for the user")
+    user_id: str = Field(..., description="User identifier")
+    weak_topics: List[str] | None = Field(
+        default=None, description="Topics the user struggles with"
+    )
+    created_at: datetime = Field(..., description="UTC timestamp when user was created")
+
+    @field_validator("weak_topics", mode="before")
+    @classmethod
+    def parse_weak_topics(cls, v):
+        """Parse weak_topics JSON string to list."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    """
+    Schema for updating user information.
+    """
+
+    weak_topics: List[str] | None = Field(
+        default=None, description="Updated list of weak topics"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"weak_topics": ["Python", "Databases"]}}
+    )
