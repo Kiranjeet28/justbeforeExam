@@ -703,3 +703,55 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={"example": {"weak_topics": ["Python", "Databases"]}}
     )
+
+
+class PersonalizedRecommendation(BaseModel):
+    """
+    Schema for personalized recommendations based on weak areas.
+    """
+
+    topic: str = Field(..., description="Weak topic area")
+    priority: str = Field(
+        ...,
+        description="Priority level based on mistake frequency",
+        examples=["high", "medium", "low"],
+    )
+    recommended_links: List[Dict[str, str]] = Field(
+        ...,
+        description="Recommended links with title and URL",
+        examples=[
+            [
+                {
+                    "title": "Python Lists Tutorial",
+                    "url": "https://example.com/python-lists",
+                }
+            ]
+        ],
+    )
+    key_concepts: List[str] = Field(
+        ...,
+        description="Key concepts to focus on",
+        examples=[["List indexing", "List methods", "List comprehensions"]],
+    )
+    short_advice: str = Field(
+        ...,
+        description="Brief guidance for improvement",
+        examples=["Revise list operations from the linked tutorial"],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "topic": "Python",
+                "priority": "high",
+                "recommended_links": [
+                    {
+                        "title": "Python Data Structures Guide",
+                        "url": "https://example.com/python-data-structures",
+                    }
+                ],
+                "key_concepts": ["Lists", "Dictionaries", "Tuples"],
+                "short_advice": "Focus on list comprehensions and dictionary methods",
+            }
+        }
+    )

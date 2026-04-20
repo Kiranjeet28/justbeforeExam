@@ -202,7 +202,7 @@ class UserLink(Base):
 
 class LinkUsage(Base):
     """
-    Tracks usage statistics for user links to enable history-based ranking.
+    Tracks usage statistics for user links to enable history-based ranking and feedback.
     """
 
     __tablename__ = "link_usage"
@@ -224,6 +224,12 @@ class LinkUsage(Base):
         nullable=False,
         index=True,
         comment="Last access timestamp",
+    )
+    time_spent = Column(
+        Integer, default=0, nullable=False, comment="Total time spent in seconds"
+    )
+    performance_boost = Column(
+        Float, default=0.0, nullable=False, comment="Performance improvement score"
     )
 
     # Foreign key constraint

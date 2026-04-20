@@ -1,6 +1,6 @@
 import json
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, List
 
 from database import Base, engine, get_db
 from fastapi import Depends, FastAPI, HTTPException, Response, status
@@ -17,9 +17,14 @@ from rag.personalized_links import (
     retrieve_personalized_links,
     track_link_access,
 )
+from rag.personalized_recommendations import (
+    generate_personalized_recommendations,
+    get_personalized_recommendations,
+)
 from rag.quiz_evaluation import evaluate_quiz_answers
 from rag.quiz_generator import generate_quiz, save_quiz
 from schemas import (
+    PersonalizedRecommendation,
     QuizEvaluation,
     QuizGenerateRequest,
     QuizListResponse,
@@ -743,6 +748,51 @@ def get_quiz_results(
         )
 
     return response
+
+
+@app.post("/api/recommendations", response_model=List[PersonalizedRecommendation])
+def get_personalized_recommendations_endpoint(
+    user_id: str, weak_topics: List[str]
+) -> List[PersonalizedRecommendation]:
+    """Generate personalized recommendations based on weak areas."""
+    try:
+        recommendations = generate_personalized_recommendations(user_id, weak_topics)
+        return recommendations
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Recommendation generation failed: {str(e)}",
+        )
+
+
+@app.post("/api/link-feedback")
+def track_link_feedback(
+    user_id: str, link_id: int, time_spent: int, clicked: bool = True
+):
+    """Track link usage feedback for adaptive recommendations."""
+    try:
+        recommender = get_personalized_recommendations()
+        recommender.track_link_feedback(user_id, link_id, time_spent, clicked)
+        return {"status": "feedback recorded"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Feedback tracking failed: {str(e)}",
+        )
+
+
+@app.post("/api/link-performance")
+def update_link_performance(user_id: str, link_id: int, improvement_score: float):
+    """Update performance boost for links that improved quiz scores."""
+    try:
+        recommender = get_personalized_recommendations()
+        recommender.update_performance_boost(user_id, link_id, improvement_score)
+        return {"status": "performance updated"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Performance update failed: {str(e)}",
+        )
 
 
 @app.post("/api/generate-quiz")
