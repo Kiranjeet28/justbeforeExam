@@ -10,6 +10,7 @@ import {
   Sparkles,
   Plus,
   Check,
+  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -29,8 +30,32 @@ interface WorkspaceProps {
   onSourcesChange?: (count: number) => void;
 }
 
+interface TestURL {
+  url: string;
+  label: string;
+  description: string;
+}
+
 const MAX_LINKS = 3;
 const TOAST_MAX = "Maximum 3 sources allowed for this session.";
+
+const PREDEFINED_TEST_URLS: TestURL[] = [
+  {
+    url: "https://www.geeksforgeeks.org/computer-networks/cryptography-and-its-types/",
+    label: "GeeksforGeeks - Cryptography",
+    description: "Comprehensive guide on cryptography types",
+  },
+  {
+    url: "https://www.tutorialspoint.com/cryptography/index.htm",
+    label: "TutorialsPoint - Cryptography",
+    description: "Complete cryptography tutorial",
+  },
+  {
+    url: "https://youtu.be/trHox1bN5es?si=HkTPipEwVRi7In3H",
+    label: "YouTube - Cryptography Basics",
+    description: "Video introduction to cryptography",
+  },
+];
 
 function detectSourceType(content: string): "video" | "link" | "note" {
   const trimmed = content.trim();
@@ -199,6 +224,12 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
     setTimeout(() => setShowPastedAnimation(false), 1500);
   };
 
+  const handleSelectTestUrl = (url: string) => {
+    setInput(url);
+    setShowPastedAnimation(true);
+    setTimeout(() => setShowPastedAnimation(false), 1500);
+  };
+
   const handleDragOver = (event: React.DragEvent) => {
     event.preventDefault();
     setIsDragOver(true);
@@ -304,10 +335,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
               initial={{ opacity: 0, y: -15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className={`mb-8 w-full rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 px-8 py-4 text-center font-bold text-white shadow-xl shadow-blue-600/25 transition-all duration-300 ${isRagGenerating
+              className={`mb-8 w-full rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 px-8 py-4 text-center font-bold text-white shadow-xl shadow-blue-600/25 transition-all duration-300 ${
+                isRagGenerating
                   ? "cursor-not-allowed opacity-70"
                   : "hover:shadow-xl hover:shadow-blue-600/40 hover:from-blue-500 hover:via-blue-600 hover:to-blue-700"
-                }`}
+              }`}
               whileHover={isRagGenerating ? {} : { scale: 1.02, y: -2 }}
               whileTap={isRagGenerating ? {} : { scale: 0.98 }}
             >
@@ -348,10 +380,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
             {!showContentPreview ? (
               // Initial State - Drag & Drop Zone
               <motion.div
-                className={`relative rounded-2xl border-2 bg-slate-950/30 px-8 py-8 transition-all duration-300 backdrop-blur-sm ${isDragOver
+                className={`relative rounded-2xl border-2 bg-slate-950/30 px-8 py-8 transition-all duration-300 backdrop-blur-sm ${
+                  isDragOver
                     ? "scale-[1.02] border-blue-400/80 shadow-2xl shadow-blue-500/20 bg-blue-950/20"
                     : "border-slate-700/60 hover:border-slate-700/80"
-                  }`}
+                }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -388,6 +421,60 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                   <p className="text-center text-xs text-slate-500">
                     or paste a YouTube link or website URL
                   </p>
+
+                  {/* Predefined Test URLs Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center gap-2 justify-center px-4 py-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <Zap size={12} className="text-amber-400" />
+                        Quick Start
+                      </span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {PREDEFINED_TEST_URLS.map((testUrl, idx) => (
+                        <motion.button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectTestUrl(testUrl.url)}
+                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: 0.05 * idx }}
+                          whileHover={{ scale: 1.05, translateY: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="group relative rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-800/40 to-slate-900/20 p-3 text-left transition-all duration-300 hover:border-blue-500/40 hover:bg-gradient-to-br hover:from-slate-800/60 hover:to-blue-950/20 hover:shadow-lg hover:shadow-blue-500/10"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs font-semibold text-slate-100 line-clamp-1 group-hover:text-blue-300 transition-colors">
+                                {testUrl.label}
+                              </p>
+                              <div className="flex-shrink-0 rounded-full bg-blue-500/10 p-1.5 group-hover:bg-blue-500/20 transition-colors">
+                                <Zap size={11} className="text-blue-400" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 line-clamp-1 group-hover:text-slate-300 transition-colors">
+                              {testUrl.description}
+                            </p>
+                          </div>
+
+                          {/* Animated Border on Hover */}
+                          <motion.div
+                            className="absolute inset-0 rounded-lg border border-blue-500/0 group-hover:border-blue-500/30 transition-colors pointer-events-none"
+                            initial={false}
+                            animate={{ borderColor: "rgba(59, 130, 246, 0)" }}
+                          />
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
 
                   <textarea
                     value={input}
@@ -463,10 +550,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                       <motion.button
                         type="submit"
                         disabled={isParsing || !input.trim()}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim()
+                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${
+                          isParsing || !input.trim()
                             ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                             : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                          }`}
+                        }`}
                         whileHover={
                           isParsing || !input.trim() ? {} : { scale: 1.05 }
                         }
@@ -513,10 +601,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                                 type="button"
                                 onClick={() => setSelectedLinkId(link.id)}
                                 layout
-                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${selectedLink?.id === link.id
+                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${
+                                  selectedLink?.id === link.id
                                     ? "border-rose-400/50 bg-rose-500/20 text-rose-100 shadow-lg shadow-rose-500/20"
                                     : "border-slate-600/60 bg-slate-800/40 text-slate-300 hover:border-rose-400/30 hover:bg-slate-800/60 hover:text-slate-100"
-                                  }`}
+                                }`}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 title={link.url}
@@ -549,10 +638,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                                 type="button"
                                 onClick={() => setSelectedLinkId(link.id)}
                                 layout
-                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${selectedLink?.id === link.id
+                                className={`max-w-full truncate rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 ${
+                                  selectedLink?.id === link.id
                                     ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-100 shadow-lg shadow-cyan-500/20"
                                     : "border-slate-600/60 bg-slate-800/40 text-slate-300 hover:border-cyan-400/30 hover:bg-slate-800/60 hover:text-slate-100"
-                                  }`}
+                                }`}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 title={link.url}
@@ -661,24 +751,24 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                               </div>
                               {(selectedLink.cleanedParagraphs ?? []).length >
                                 0 && (
-                                  <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
-                                      Content Preview
-                                    </p>
-                                    <div className="space-y-3">
-                                      {(selectedLink.cleanedParagraphs ?? [])
-                                        .slice(0, 3)
-                                        .map((para, i) => (
-                                          <p
-                                            key={i}
-                                            className="text-sm leading-relaxed text-slate-300 line-clamp-2 rounded-lg border border-slate-700/30 bg-slate-800/20 p-3"
-                                          >
-                                            {para}
-                                          </p>
-                                        ))}
-                                    </div>
+                                <div>
+                                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+                                    Content Preview
+                                  </p>
+                                  <div className="space-y-3">
+                                    {(selectedLink.cleanedParagraphs ?? [])
+                                      .slice(0, 3)
+                                      .map((para, i) => (
+                                        <p
+                                          key={i}
+                                          className="text-sm leading-relaxed text-slate-300 line-clamp-2 rounded-lg border border-slate-700/30 bg-slate-800/20 p-3"
+                                        >
+                                          {para}
+                                        </p>
+                                      ))}
                                   </div>
-                                )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </motion.div>
@@ -706,10 +796,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                       <motion.button
                         type="submit"
                         disabled={isParsing || !input.trim()}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim()
+                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all duration-300 ${
+                          isParsing || !input.trim()
                             ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                             : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                          }`}
+                        }`}
                         whileHover={
                           isParsing || !input.trim() ? {} : { scale: 1.05 }
                         }
@@ -755,10 +846,11 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
                   disabled={
                     isParsing || !input.trim() || detectedType === "note"
                   }
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all duration-300 ${isParsing || !input.trim() || detectedType === "note"
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all duration-300 ${
+                    isParsing || !input.trim() || detectedType === "note"
                       ? "bg-slate-700/50 text-slate-400 cursor-not-allowed"
                       : "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-500 hover:to-blue-600"
-                    }`}
+                  }`}
                   whileHover={
                     isParsing || !input.trim() || detectedType === "note"
                       ? {}

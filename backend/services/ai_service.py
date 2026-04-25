@@ -5,68 +5,73 @@ Includes error handling, exponential backoff, and model fallback
 Also supports Hugging Face Inference API with RAG capabilities
 """
 
-import os
 import json
-import time
+import os
 import re
+import time
 from abc import ABC, abstractmethod
-from typing import Optional
 from collections import Counter
+from typing import Optional
 
 import requests
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+try:
+    from langchain_huggingface import HuggingFaceEndpoint
+except ImportError:
+    HuggingFaceEndpoint = None
 
 load_dotenv()
 
 
 class RateLimitExceeded(Exception):
     """Custom exception for rate limit errors (429)"""
-    pass
 
+    pass
 
 
 class TextExtractor:
     """Utility for extracting text from various sources"""
-    
+
     @staticmethod
     def extract_from_youtube(video_id: str) -> str:
         """Extract transcript from YouTube video"""
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
-            
+
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-            transcript_text = " ".join([item['text'] for item in transcript_list])
+            transcript_text = " ".join([item["text"] for item in transcript_list])
             return transcript_text
         except Exception as e:
             return f"[Could not extract YouTube transcript: {str(e)}]"
-    
+
     @staticmethod
     def extract_from_url(url: str) -> str:
         """Extract text content from URL"""
         try:
             from bs4 import BeautifulSoup
-            
+
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
-            
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
+
+            soup = BeautifulSoup(response.content, "html.parser")
+
             # Remove script and style elements
             for script in soup(["script", "style"]):
                 script.decompose()
-            
+
             # Get text
             text = soup.get_text()
-            
+
             # Clean up whitespace
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = ' '.join(chunk for chunk in chunks if chunk)
-            
+            text = " ".join(chunk for chunk in chunks if chunk)
+
             return text
         except Exception as e:
             return f"[Could not extract URL content: {str(e)}]"
@@ -134,61 +139,77 @@ class GeminiProvider(AIProvider):
     def _call_with_fallback(self, prompt: str) -> str:
         """
         Call Gemini API with exponential backoff and model fallback.
-        
+
         If gemini-2.0-flash fails due to quota, falls back to gemini-2.5-pro.
         Uses exponential backoff for rate limiting.
         """
         models_to_try = [self.primary_model, self.fallback_model]
-        
+
         for model_name in models_to_try:
             try:
                 model = self.genai.GenerativeModel(model_name)
-                
+
                 # Retry with exponential backoff
                 @retry(
                     stop=stop_after_attempt(3),
                     wait=wait_exponential(multiplier=1, min=2, max=10),
-                    reraise=True
+                    reraise=True,
                 )
                 def make_request():
                     return model.generate_content(prompt)
-                
+
                 response = make_request()
                 return response.text
-                
+
             except Exception as e:
                 error_str = str(e).lower()
-                
+
                 # Check for rate limit error
-                if "429" in str(e) or "resource_exhausted" in error_str or "rate limit" in error_str:
+                if (
+                    "429" in str(e)
+                    or "resource_exhausted" in error_str
+                    or "rate limit" in error_str
+                ):
                     # If this is the primary model, try fallback
                     if model_name == self.primary_model:
-                        print(f"Primary model ({model_name}) rate limited, trying fallback...")
+                        print(
+                            f"Primary model ({model_name}) rate limited, trying fallback..."
+                        )
                         continue  # Try next model
                     # If fallback also failed, use development mock response
-                    print(f"Fallback model ({model_name}) also rate limited, using mock response for development")
+                    print(
+                        f"Fallback model ({model_name}) also rate limited, using mock response for development"
+                    )
                     return self._get_mock_response(prompt)
-                
+
                 # Check for quota exceeded
                 if "quota" in error_str or "exceeded" in error_str:
                     if model_name == self.primary_model:
-                        print(f"Primary model ({model_name}) quota exceeded, trying fallback...")
+                        print(
+                            f"Primary model ({model_name}) quota exceeded, trying fallback..."
+                        )
                         continue  # Try fallback model
                     # Use mock response as last resort
-                    print(f"Fallback model ({model_name}) quota exceeded, using mock response for development")
+                    print(
+                        f"Fallback model ({model_name}) quota exceeded, using mock response for development"
+                    )
                     return self._get_mock_response(prompt)
-                
+
                 # For other errors, try fallback if not already on it
                 if model_name == self.primary_model:
-                    print(f"Primary model ({model_name}) error: {str(e)}, trying fallback...")
+                    print(
+                        f"Primary model ({model_name}) error: {str(e)}, trying fallback..."
+                    )
                     continue
                 # If fallback also failed with a different error, use mock
-                print(f"Fallback model failed with error: {str(e)}, using mock response for development")
+                print(
+                    f"Fallback model failed with error: {str(e)}, using mock response for development"
+                )
                 return self._get_mock_response(prompt)
-        
+
         # Final fallback to mock response
         return self._get_mock_response(prompt)
-    
+
     def _get_mock_response(self, prompt: str) -> str:
         """Generate a mock response for development when API is rate limited"""
         # Generate contextual mock response based on prompt type
@@ -273,13 +294,13 @@ Based on the provided materials, here's a comprehensive analysis:
         """
         Generate comprehensive study notes using RAG with source citations.
         Includes error handling and fallback mechanisms.
-        
+
         Args:
             sources_data: List of dicts with 'type', 'content', 'id' keys
-        
+
         Returns:
             Dict with 'notes' (markdown) and 'citations' (list of sources)
-        
+
         Raises:
             RateLimitExceeded: When API rate limit is hit
             RuntimeError: For other API errors
@@ -287,19 +308,23 @@ Based on the provided materials, here's a comprehensive analysis:
         # Build enriched context with source references
         sources_context = ""
         citations = []
-        
+
         for idx, source in enumerate(sources_data, 1):
-            source_type = source.get('type', 'note').upper()
-            content = source.get('content', '')[:500]  # Limit to first 500 chars per source
-            source_id = source.get('id', idx)
-            
+            source_type = source.get("type", "note").upper()
+            content = source.get("content", "")[
+                :500
+            ]  # Limit to first 500 chars per source
+            source_id = source.get("id", idx)
+
             sources_context += f"\n[SOURCE {idx}] ({source_type}) - Source ID: {source_id}\n{content}\n"
-            citations.append({
-                "id": source_id,
-                "type": source.get('type', 'note'),
-                "preview": content[:100] + "..." if len(content) > 100 else content
-            })
-        
+            citations.append(
+                {
+                    "id": source_id,
+                    "type": source.get("type", "note"),
+                    "preview": content[:100] + "..." if len(content) > 100 else content,
+                }
+            )
+
         rag_prompt = f"""You are an expert academic summarizer and study guide creator. Analyze the provided study materials and extract the TOP 5 MOST COMPLEX TOPICS.
 
 STUDY MATERIALS:
@@ -337,7 +362,7 @@ IMPORTANT:
         return {
             "notes": notes,
             "citations": citations,
-            "sources_count": len(sources_data)
+            "sources_count": len(sources_data),
         }
 
     @staticmethod
@@ -437,10 +462,11 @@ class OpenAIProvider(AIProvider):
         Call OpenAI API with exponential backoff and retry logic.
         Handles rate limiting gracefully.
         """
+
         @retry(
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=2, max=10),
-            reraise=True
+            reraise=True,
         )
         def make_request():
             return self.client.chat.completions.create(
@@ -449,25 +475,29 @@ class OpenAIProvider(AIProvider):
                 temperature=0.7,
                 max_tokens=3000,
             )
-        
+
         try:
             response = make_request()
             return response.choices[0].message.content
         except Exception as e:
             error_str = str(e).lower()
-            
+
             # Check for rate limit errors
-            if "429" in str(e) or "rate_limit" in error_str or "rate limit" in error_str:
+            if (
+                "429" in str(e)
+                or "rate_limit" in error_str
+                or "rate limit" in error_str
+            ):
                 raise RateLimitExceeded(
                     "API Limit reached. Please wait 60 seconds before retrying."
                 )
-            
+
             # Check for quota exceeded
             if "quota" in error_str or "insufficient_quota" in error_str:
                 raise RateLimitExceeded(
                     "API Limit reached. Please wait 60 seconds before retrying."
                 )
-            
+
             raise RuntimeError(f"Error with OpenAI-compatible API: {str(e)}")
 
     def generate_study_report(self, sources_text: str) -> str:
@@ -484,13 +514,13 @@ class OpenAIProvider(AIProvider):
         """
         Generate comprehensive study notes using RAG with source citations.
         Includes error handling and retry logic.
-        
+
         Args:
             sources_data: List of dicts with 'type', 'content', 'id' keys
-        
+
         Returns:
             Dict with 'notes' (markdown) and 'citations' (list of sources)
-        
+
         Raises:
             RateLimitExceeded: When API rate limit is hit
             RuntimeError: For other API errors
@@ -498,19 +528,21 @@ class OpenAIProvider(AIProvider):
         # Build enriched context with source references
         sources_context = ""
         citations = []
-        
+
         for idx, source in enumerate(sources_data, 1):
-            source_type = source.get('type', 'note').upper()
-            content = source.get('content', '')[:500]
-            source_id = source.get('id', idx)
-            
+            source_type = source.get("type", "note").upper()
+            content = source.get("content", "")[:500]
+            source_id = source.get("id", idx)
+
             sources_context += f"\n[SOURCE {idx}] ({source_type}) - Source ID: {source_id}\n{content}\n"
-            citations.append({
-                "id": source_id,
-                "type": source.get('type', 'note'),
-                "preview": content[:100] + "..." if len(content) > 100 else content
-            })
-        
+            citations.append(
+                {
+                    "id": source_id,
+                    "type": source.get("type", "note"),
+                    "preview": content[:100] + "..." if len(content) > 100 else content,
+                }
+            )
+
         rag_prompt = f"""You are an expert academic summarizer. Analyze the provided study materials and extract the TOP 5 MOST COMPLEX TOPICS.
 
 STUDY MATERIALS:
@@ -537,7 +569,7 @@ IMPORTANT: Return only valid Markdown. Draw all content from provided materials.
         return {
             "notes": notes,
             "citations": citations,
-            "sources_count": len(sources_data)
+            "sources_count": len(sources_data),
         }
 
     @staticmethod
@@ -614,6 +646,59 @@ IMPORTANT:
 """
 
 
+class HuggingFaceRAG:
+    """
+    HuggingFace RAG provider using langchain-huggingface.
+    Falls back to mock generation if API token not available.
+    """
+
+    def __init__(self):
+        """Initialize HuggingFace endpoint with API token."""
+        self.hf_token = os.getenv("HF_TOKEN")
+        if not self.hf_token:
+            raise ValueError(
+                "HF_TOKEN environment variable not set. "
+                "Please set your HuggingFace API token to use HuggingFace RAG."
+            )
+
+        if not HuggingFaceEndpoint:
+            raise ImportError(
+                "langchain-huggingface is not installed. "
+                "Install it with: pip install langchain-huggingface"
+            )
+
+        try:
+            self.llm = HuggingFaceEndpoint(
+                repo_id="mistralai/Mistral-7B-Instruct-v0.1",
+                task="text-generation",
+                huggingfacehub_api_token=self.hf_token,
+                model_kwargs={"temperature": 0.7, "max_length": 1024},
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to initialize HuggingFace endpoint: {str(e)}")
+
+    def generate_with_rag(self, prompt: str) -> str:
+        """
+        Generate content using HuggingFace model.
+
+        Args:
+            prompt: The input prompt for generation
+
+        Returns:
+            Generated text response
+        """
+        if not prompt or not prompt.strip():
+            raise ValueError("Prompt cannot be empty")
+
+        try:
+            response = self.llm.invoke(prompt)
+            if not response or not response.strip():
+                raise RuntimeError("HuggingFace returned empty response")
+            return response.strip()
+        except Exception as e:
+            raise RuntimeError(f"HuggingFace generation failed: {str(e)}")
+
+
 class AIService:
     """
     Modular AI Service that routes to configured provider
@@ -652,6 +737,7 @@ class AIService:
             raise ValueError("sources_text cannot be empty")
 
         return self.provider.generate_study_report(sources_text)
+
     def generate_study_notes(self, sources_text: str) -> str:
         """
         Generate comprehensive study notes from concatenated source content.
@@ -680,15 +766,14 @@ class AIService:
         result["provider"] = self.provider_name
         return result
 
-    
     def _generate_mock_notes(self, content: str, topic: str = "") -> str:
         """Generate mock study notes from content for development/fallback"""
         # Extract key words from content for more relevant mock notes
         words = content.split()[:50]  # Get first 50 words
         key_phrase = " ".join(words[:10]) if words else "study material"
-        
+
         topic_section = f"**Focus**: {topic}\n\n" if topic else ""
-        
+
         return f"""# Study Notes
 
 {topic_section}## 📚 Key Concepts
