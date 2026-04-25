@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from database import Base
-from sqlalchemy import CheckConstraint, Column, DateTime, Index, Integer, String, Text
+from sqlalchemy import CheckConstraint, Column, DateTime, Float, Index, Integer, String, Text
+
 
 
 class Source(Base):
