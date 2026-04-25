@@ -28,6 +28,7 @@ import { RateLimitFallback } from "@/components/RateLimitFallback";
 
 interface WorkspaceProps {
   onSourcesChange?: (count: number) => void;
+  initialLink?: string;
 }
 
 interface TestURL {
@@ -77,7 +78,10 @@ function typeIcon(sourceType: ParsedLink["sourceType"]) {
   return <Globe size={18} className="text-cyan-400 shrink-0" />;
 }
 
-export default function Workspace({ onSourcesChange }: WorkspaceProps) {
+export default function Workspace({
+  onSourcesChange,
+  initialLink,
+}: WorkspaceProps) {
   const [input, setInput] = useState("");
   const [linkSources, setLinkSources] = useState<ParsedLink[]>([]);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
@@ -121,6 +125,15 @@ export default function Workspace({ onSourcesChange }: WorkspaceProps) {
       return;
     setSelectedLinkId(sortedLinks[0]?.id ?? null);
   }, [sortedLinks, selectedLinkId]);
+
+  // Handle initialLink prop from sidebar
+  useEffect(() => {
+    if (initialLink && initialLink.trim()) {
+      setInput(initialLink);
+      setShowPastedAnimation(true);
+      setTimeout(() => setShowPastedAnimation(false), 1500);
+    }
+  }, [initialLink]);
 
   const handleAddSource = async (event: FormEvent) => {
     event.preventDefault();

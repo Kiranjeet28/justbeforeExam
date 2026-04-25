@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { TextGenerateEffect } from "@/components/TextGenerateEffect";
 import ReportTab from "@/components/ReportTab";
+import TestResourcesSidebar from "@/components/TestResourcesSidebar";
 
 const Workspace = dynamic(() => import("@/components/Workspace"), {
   ssr: false,
@@ -75,6 +76,7 @@ const BackgroundPattern = () => (
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("notes");
   const [sourcesCount, setSourcesCount] = useState(0);
+  const [selectedTestUrl, setSelectedTestUrl] = useState<string>("");
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: "notes", label: "Notes", icon: <Pencil size={18} /> },
@@ -372,26 +374,43 @@ export default function Home() {
 
           {/* ========== CONTENT AREA WITH SMOOTH TRANSITIONS ========== */}
           <motion.div className="relative z-10 w-full">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
-                transition={{
-                  duration: 0.4,
-                  type: "tween",
-                  ease: [0.4, 0, 0.2, 1],
-                }}
-              >
-                {activeTab === "notes" && (
-                  <Workspace onSourcesChange={setSourcesCount} />
-                )}
-                {activeTab === "report" && (
-                  <ReportTab sourcesCount={sourcesCount} />
-                )}
-              </motion.div>
-            </AnimatePresence>
+            <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+              {/* Test Resources Sidebar - Always Visible */}
+              {activeTab === "notes" && (
+                <TestResourcesSidebar
+                  onSelectLink={(url, label) => {
+                    setSelectedTestUrl(url);
+                    // Trigger input population in Workspace via ref or event
+                  }}
+                  className="lg:sticky lg:top-8 h-fit"
+                />
+              )}
+
+              {/* Main Content Area */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -30 }}
+                  transition={{
+                    duration: 0.4,
+                    type: "tween",
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                >
+                  {activeTab === "notes" && (
+                    <Workspace
+                      onSourcesChange={setSourcesCount}
+                      initialLink={selectedTestUrl}
+                    />
+                  )}
+                  {activeTab === "report" && (
+                    <ReportTab sourcesCount={sourcesCount} />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </motion.div>
 
           {/* Bottom Spacing for Better UX */}
