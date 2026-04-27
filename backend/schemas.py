@@ -441,7 +441,7 @@ class UserLinkRead(BaseModel):
     title: str | None = Field(default=None, description="Link title")
     topic: str | None = Field(default=None, description="Detected topic")
     content: str | None = Field(default=None, description="Extracted content preview")
-    weak_topics: List[str] | None = Field(
+    weak_topics: list[str] | None = Field(
         default=None, description="Topics user struggles with from this link"
     )
     created_at: datetime = Field(..., description="UTC timestamp when link was added")
@@ -474,7 +474,7 @@ class UserLinkUpdate(BaseModel):
         max_length=200,
         description="New topic (if updating)",
     )
-    weak_topics: List[str] | None = Field(
+    weak_topics: list[str] | None = Field(
         default=None,
         description="Updated list of weak topics (if updating)",
     )
@@ -503,7 +503,7 @@ class MCQItem(BaseModel):
     """
 
     question: str = Field(..., min_length=10, description="The question text")
-    options: List[str] = Field(
+    options: list[str] = Field(
         ..., min_items=4, max_items=4, description="Four options labeled A, B, C, D"
     )
     correct_answer: str = Field(
@@ -530,7 +530,7 @@ class ShortAnswerItem(BaseModel):
     expected_answer: str = Field(
         ..., min_length=10, description="Expected concise answer"
     )
-    key_points: List[str] = Field(
+    key_points: list[str] = Field(
         ..., min_items=1, description="Key points to cover in answer"
     )
 
@@ -540,10 +540,10 @@ class QuizStructure(BaseModel):
     Schema for complete quiz structure.
     """
 
-    mcqs: List[MCQItem] = Field(
+    mcqs: list[MCQItem] = Field(
         ..., min_items=5, max_items=10, description="Multiple choice questions"
     )
-    short_questions: List[ShortAnswerItem] = Field(
+    short_questions: list[ShortAnswerItem] = Field(
         ..., min_items=2, max_items=3, description="Short answer questions"
     )
 
@@ -621,7 +621,7 @@ class QuizEvaluation(BaseModel):
 
     score: int = Field(..., description="Number of correct answers", ge=0)
     accuracy: float = Field(..., description="Accuracy percentage", ge=0.0, le=100.0)
-    mistakes: List[Dict] = Field(
+    mistakes: list[Dict] = Field(
         ...,
         description="List of incorrect questions with details",
         examples=[
@@ -636,7 +636,7 @@ class QuizEvaluation(BaseModel):
             ]
         ],
     )
-    weak_topics: List[str] = Field(
+    weak_topics: list[str] = Field(
         ...,
         description="Detected weak topics",
         examples=[["Python", "Algorithms"]],
@@ -675,7 +675,7 @@ class UserRead(BaseModel):
 
     id: int = Field(..., description="Unique identifier for the user")
     user_id: str = Field(..., description="User identifier")
-    weak_topics: List[str] | None = Field(
+    weak_topics: list[str] | None = Field(
         default=None, description="Topics the user struggles with"
     )
     created_at: datetime = Field(..., description="UTC timestamp when user was created")
@@ -696,7 +696,7 @@ class UserUpdate(BaseModel):
     Schema for updating user information.
     """
 
-    weak_topics: List[str] | None = Field(
+    weak_topics: list[str] | None = Field(
         default=None, description="Updated list of weak topics"
     )
 
@@ -716,7 +716,7 @@ class PersonalizedRecommendation(BaseModel):
         description="Priority level based on mistake frequency",
         examples=["high", "medium", "low"],
     )
-    recommended_links: List[Dict[str, str]] = Field(
+    recommended_links: list[Dict[str, str]] = Field(
         ...,
         description="Recommended links with title and URL",
         examples=[
@@ -728,7 +728,7 @@ class PersonalizedRecommendation(BaseModel):
             ]
         ],
     )
-    key_concepts: List[str] = Field(
+    key_concepts: list[str] = Field(
         ...,
         description="Key concepts to focus on",
         examples=[["List indexing", "List methods", "List comprehensions"]],
