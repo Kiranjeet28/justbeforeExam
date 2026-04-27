@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Dict, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -326,19 +326,6 @@ class QuizUpdate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={"example": {"topic": "Updated Quiz Topic"}}
     )
-
-
-class QuizListResponse(BaseModel):
-    """
-    Schema for listing quizzes with pagination.
-    """
-
-    items: list[QuizRead] = Field(..., description="List of quizzes")
-    total: int = Field(..., ge=0, description="Total number of quizzes available")
-    page: int = Field(default=1, ge=1, description="Current page number")
-    page_size: int = Field(default=20, ge=1, description="Number of items per page")
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class SourceListResponse(BaseModel):

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any, List
 
 from database import Base, engine, get_db
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from google.api_core import exceptions as google_api_exceptions
@@ -642,10 +642,10 @@ def delete_user_link(
 
 @app.post("/api/user-links/search")
 def search_user_links(
-    user_id: str,
-    query: str = Field(..., min_length=1, description="Search query"),
-    topic: str | None = None,
-    top_k: int = 10,
+    user_id: str = Query(..., description="User identifier"),
+    query: str = Query(..., min_length=1, description="Search query"),
+    topic: str | None = Query(None, description="Filter by topic"),
+    top_k: int = Query(10, description="Number of results to return"),
 ) -> dict[str, object]:
     """Search personalized links using vector similarity."""
     try:
