@@ -221,8 +221,8 @@ export const InputSection: React.FC<InputSectionProps> = ({
       animate="visible"
       className={cn(
         "w-full rounded-2xl bg-gradient-to-br from-slate-900/50 to-slate-800/50",
-        "border border-slate-700/50 backdrop-blur-sm",
-        "p-4 sm:p-6 lg:p-8 space-y-6",
+          "border border-slate-700/50 backdrop-blur-sm",
+          "p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6",
         className,
       )}
     >
@@ -237,10 +237,10 @@ export const InputSection: React.FC<InputSectionProps> = ({
             <Zap size={24} className="text-violet-400" />
           </motion.div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white">
-              Paste Your Learning URL
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
+                  Paste Your Learning URL
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Transform any webpage into comprehensive notes and quizzes
             </p>
           </div>
@@ -253,7 +253,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={cn(
+            className={cn(
           "relative rounded-xl transition-all duration-300",
           "border-2",
           isDragging
@@ -262,7 +262,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
         )}
       >
         {/* Input with Icon */}
-        <div className="relative p-4">
+        <div className="relative p-3 sm:p-4">
           <Input
             type="url"
             placeholder="https://example.com/learning-resource"
@@ -272,12 +272,12 @@ export const InputSection: React.FC<InputSectionProps> = ({
             state={urlError ? "error" : urlState}
             errorMessage={urlError || undefined}
             size="lg"
-            icon={<LinkIcon size={20} />}
+            icon={<LinkIcon size={18} />}
             iconPosition="left"
             fullWidth
             containerClassName="w-full"
             className={cn(
-              "bg-slate-900/50 border-0 px-5",
+              "bg-slate-900/50 border-0 px-4 sm:px-5 text-sm",
               urlState === "success" &&
                 "bg-emerald-500/10 text-emerald-100 placeholder:text-emerald-700/50",
             )}
@@ -289,7 +289,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-4 right-4 px-3 py-1 rounded-full bg-slate-700/50 text-xs text-slate-300 font-medium"
+            className="absolute top-3 sm:top-4 right-3 sm:right-4 px-2 sm:px-3 py-1 rounded-full bg-slate-700/50 text-xs text-slate-300 font-medium"
             id="url-char-count"
           >
             {charCount}/2048
@@ -347,7 +347,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
       {/* Action Buttons */}
       <motion.div
         variants={itemVariants}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3"
       >
         <Button
           onClick={handleGenerateNotes}
@@ -391,14 +391,15 @@ export const InputSection: React.FC<InputSectionProps> = ({
               key={index}
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => handleSuggestedClick(resource.url)}
-              className={cn(
-                "relative group rounded-lg p-3 text-left",
-                "bg-slate-800/50 hover:bg-slate-700/70",
-                "border border-slate-700/50 hover:border-violet-500/50",
-                "transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-              )}
+              <button
+                    onClick={() => handleSuggestedClick(resource.url)}
+                    className={cn(
+                      "relative group rounded-lg p-2 sm:p-3 text-left",
+                      "bg-slate-800/50 hover:bg-slate-700/70",
+                      "border border-slate-700/50 hover:border-violet-500/50",
+                      "transition-all duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                    )}
               aria-label={`Use ${resource.title} as learning source`}
             >
               {/* Gradient background on hover */}
@@ -408,12 +409,12 @@ export const InputSection: React.FC<InputSectionProps> = ({
               />
 
               {/* Content */}
-              <div className="relative z-10 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded bg-violet-500/20 text-violet-300">
+              <div className="relative z-10 space-y-0.5 sm:space-y-1">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="p-1 rounded bg-violet-500/20 text-violet-300 text-xs sm:text-sm">
                     {resource.icon}
                   </span>
-                  <span className="font-medium text-sm text-white group-hover:text-violet-300 transition-colors">
+                  <span className="font-medium text-xs sm:text-sm text-white group-hover:text-violet-300 transition-colors">
                     {resource.title}
                   </span>
                 </div>
@@ -430,15 +431,15 @@ export const InputSection: React.FC<InputSectionProps> = ({
       {!url && (
         <motion.div
           variants={itemVariants}
-          className="rounded-lg bg-slate-800/20 border border-slate-700/30 p-4"
+          className="rounded-lg bg-slate-800/20 border border-slate-700/30 p-3 sm:p-4"
         >
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <div className="flex-shrink-0 mt-0.5">
-              <Upload size={18} className="text-slate-400" />
+              <Upload size={16} className="text-slate-400 sm:w-5 sm:h-5" />
             </div>
-            <div className="text-sm text-slate-400 space-y-1">
+            <div className="text-xs sm:text-sm text-slate-400 space-y-1">
               <p className="font-medium text-slate-300">How to use:</p>
-              <ul className="space-y-0.5 text-xs ml-3">
+              <ul className="space-y-0.5 text-xs ml-2 sm:ml-3">
                 <li>• Copy a learning resource URL and paste it above</li>
                 <li>• Or drag & drop a URL directly into the input area</li>
                 <li>• Try one of the suggested resources to get started</li>
