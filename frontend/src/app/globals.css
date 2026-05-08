@@ -759,6 +759,137 @@
             border-color: var(--primary);
         }
     }
+
+    /* DARK THEME ONLY - Premium Experience */
+    
+    /* Enforce dark theme */
+    html {
+        color-scheme: dark;
+        background: #0f172a;
+    }
+
+    body {
+        background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+        color: #f1f5f9;
+    }
+
+    /* Premium glassmorphism cards */
+    .glass-premium {
+        @apply bg-slate-900/40 backdrop-blur-xl border border-violet-500/10 rounded-2xl shadow-lg shadow-black/30;
+    }
+
+    .glass-premium-sm {
+        @apply bg-slate-900/50 backdrop-blur-lg border border-violet-500/15 rounded-xl shadow-md shadow-black/20;
+    }
+
+    .glass-premium-lg {
+        @apply bg-slate-900/30 backdrop-blur-2xl border border-violet-500/20 rounded-3xl shadow-2xl shadow-black/40;
+    }
+
+    /* Gradient borders */
+    .border-gradient-violet {
+        @apply border border-transparent bg-gradient-to-r from-violet-500 to-cyan-500 bg-clip-border;
+    }
+
+    .border-gradient-cyan {
+        @apply border border-transparent bg-gradient-to-r from-cyan-500 to-violet-500 bg-clip-border;
+    }
+
+    /* Animated gradient backgrounds */
+    .bg-gradient-animated {
+        background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 50%, #8b5cf6 100%);
+        background-size: 200% 200%;
+        animation: gradient-shift 8s ease infinite;
+    }
+
+    @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Glowing text */
+    .text-glow {
+        @apply text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400;
+    }
+
+    .text-glow-white {
+        @apply text-white drop-shadow-[0_0_20px_rgba(139,92,246,0.4)];
+    }
+
+    /* Neon glow effects */
+    .glow-violet {
+        @apply shadow-lg shadow-violet-500/50;
+    }
+
+    .glow-cyan {
+        @apply shadow-lg shadow-cyan-500/50;
+    }
+
+    .glow-emerald {
+        @apply shadow-lg shadow-emerald-500/50;
+    }
+
+    /* Smooth transitions */
+    .transition-smooth {
+        @apply transition-all duration-300 ease-out;
+    }
+
+    .transition-fast {
+        @apply transition-all duration-150 ease-out;
+    }
+
+    /* Focus state for dark theme */
+    .focus-ring {
+        @apply focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-950;
+    }
+
+    /* Disabled state styling */
+    .disabled-dark {
+        @apply opacity-50 cursor-not-allowed bg-slate-900/30;
+    }
+
+    /* Premium button hover effects */
+    .btn-premium {
+        @apply px-6 py-3 rounded-lg font-semibold transition-smooth;
+    }
+
+    .btn-premium-primary {
+        @apply bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:shadow-lg hover:shadow-violet-500/50 hover:scale-105;
+    }
+
+    .btn-premium-secondary {
+        @apply bg-slate-800/50 border border-violet-500/30 text-white hover:border-violet-500/50 hover:bg-slate-700/50;
+    }
+
+    /* Premium input styling */
+    .input-premium {
+        @apply px-4 py-3 rounded-lg bg-slate-900/50 border border-violet-500/20 text-white placeholder-slate-400 focus:border-violet-500/50 focus:bg-slate-900/70 transition-smooth;
+    }
+
+    /* Skeleton loader animation */
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .animate-pulse-glow {
+        animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* No light theme allowed - hide any light theme classes */
+    .light { @apply hidden !important; }
+
+    /* Responsive adjustments for dark theme */
+    @media (max-width: 768px) {
+        .glass-premium {
+            @apply rounded-xl;
+        }
+
+        .glass-premium-lg {
+            @apply rounded-2xl;
+        }
+    }
 }
 
 /* Print styles */
