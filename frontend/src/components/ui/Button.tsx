@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "size"> {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
@@ -13,6 +13,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
   icon?: React.ReactNode;
   iconPosition?: "left" | "right";
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   fullWidth?: boolean;
 }
 
@@ -25,9 +27,14 @@ export const Button: React.FC<ButtonProps> = ({
   className,
   icon,
   iconPosition = "left",
+  leftIcon,
+  rightIcon,
   fullWidth = false,
   ...props
 }) => {
+  const leadingIcon = iconPosition === "left" ? icon || leftIcon : leftIcon;
+  const trailingIcon = iconPosition === "right" ? icon || rightIcon : rightIcon;
+
   // Base styles
   const baseStyles = cn(
     "inline-flex items-center justify-center gap-2",
@@ -105,11 +112,13 @@ export const Button: React.FC<ButtonProps> = ({
         </>
       ) : (
         <>
-          {icon && iconPosition === "left" && <span className="flex">{icon}</span>}
+          {leadingIcon && <span className="flex">{leadingIcon}</span>}
           <span>{children}</span>
-          {icon && iconPosition === "right" && <span className="flex">{icon}</span>}
+          {trailingIcon && <span className="flex">{trailingIcon}</span>}
         </>
       )}
     </motion.button>
   );
 };
+
+export default Button;

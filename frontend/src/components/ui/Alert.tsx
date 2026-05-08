@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
@@ -14,7 +14,7 @@ import {
 export type AlertVariant = "success" | "error" | "warning" | "info";
 export type AlertStyle = "solid" | "soft" | "outlined";
 
-export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AlertProps extends Omit<HTMLMotionProps<"div">, "style"> {
   variant?: AlertVariant;
   style?: AlertStyle;
   title?: string;

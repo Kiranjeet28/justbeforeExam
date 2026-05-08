@@ -277,4 +277,10 @@ const Loader = forwardRef<HTMLDivElement, LoaderProps>(
 
 Loader.displayName = "Loader";
 
+export const Skeleton = (props: Omit<LoaderProps, "variant">) => (
+  <Loader {...props} variant="skeleton" />
+);
+
+Skeleton.displayName = "Skeleton";
+
 export default Loader;

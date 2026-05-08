@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -18,7 +18,7 @@ import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { InputSection } from "./InputSection";
 import { ImprovedNotesView } from "./ImprovedNotesView";
-import { QuizView, type QuizQuestion, type QuizViewProps } from "./QuizView";
+import { QuizView, type QuizQuestion } from "./QuizView";
 import { ResultsView, type QuestionResult } from "./ResultsView";
 import { WeakAreasAnalysis, type WeakTopic } from "./WeakAreasAnalysis";
 import {
@@ -407,7 +407,6 @@ export const ImprovedMainLayout: React.FC<ImprovedMainLayoutProps> = ({
   onGenerateQuiz,
   onSubmitQuiz,
   className,
-  showSidebarOnMobile = true,
 }) => {
   // ========== State Management ==========
   const [currentSection, setCurrentSection] =
@@ -443,10 +442,13 @@ export const ImprovedMainLayout: React.FC<ImprovedMainLayoutProps> = ({
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // ========== Derived State ==========
-  const disabledSections: SectionType[] = [];
-  if (!url) disabledSections.push("notes", "quiz", "results");
-  if (!notes) disabledSections.push("quiz", "results");
-  if (quizState.questions.length === 0) disabledSections.push("results");
+  const disabledSections = useMemo<SectionType[]>(() => {
+    const sections: SectionType[] = [];
+    if (!url) sections.push("notes", "quiz", "results");
+    if (!notes) sections.push("quiz", "results");
+    if (quizState.questions.length === 0) sections.push("results");
+    return sections;
+  }, [notes, quizState.questions.length, url]);
 
   const currentStep =
     SECTION_CONFIG.find((s) => s.id === currentSection)?.step ?? 1;
@@ -460,6 +462,7 @@ export const ImprovedMainLayout: React.FC<ImprovedMainLayoutProps> = ({
     async (inputUrl: string) => {
       setInputError(null);
       setNotesError(null);
+      setInputLoading(true);
       setNotesLoading(true);
 
       try {
@@ -483,6 +486,7 @@ export const ImprovedMainLayout: React.FC<ImprovedMainLayoutProps> = ({
         setNotesError(errorMessage);
         console.error("Generate notes error:", error);
       } finally {
+        setInputLoading(false);
         setNotesLoading(false);
       }
     },
@@ -653,21 +657,6 @@ export const ImprovedMainLayout: React.FC<ImprovedMainLayoutProps> = ({
       setCurrentSection(previousSection);
     }
   }, [currentSection]);
-
-  /**
-   * Handle moving to next section
-   */
-  const handleNextSection = useCallback(() => {
-    const currentIndex = SECTION_CONFIG.findIndex(
-      (s) => s.id === currentSection,
-    );
-    if (currentIndex < SECTION_CONFIG.length - 1) {
-      const nextSection = SECTION_CONFIG[currentIndex + 1].id;
-      if (!disabledSections.includes(nextSection)) {
-        setCurrentSection(nextSection);
-      }
-    }
-  }, [currentSection, disabledSections]);
 
   /**
    * Handle sidebar resource selection

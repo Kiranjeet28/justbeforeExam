@@ -62,7 +62,7 @@ export default function NoteFileUpload() {
             };
 
             xhr.send(formData);
-        } catch (err) {
+        } catch {
             setUploading(false);
             setError("Unexpected error during upload.");
         }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export type CardVariant = "default" | "elevated" | "outlined" | "gradient";
@@ -13,7 +13,7 @@ export type CardGradient =
   | "rose-red"
   | "none";
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends HTMLMotionProps<"div"> {
   variant?: CardVariant;
   gradient?: CardGradient;
   hoverable?: boolean;
@@ -93,11 +93,13 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={
-          hoverable || interactive ? { y: -4, shadow: "0 20px 25px -5px" } : {}
+          hoverable || interactive
+            ? { y: -4, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.25)" }
+            : {}
         }
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
         className={cn(
-          "rounded-xl transition-all duration-300",
+          "relative rounded-xl transition-all duration-300",
           variantClasses[variant],
           hasGradient && gradientClasses[gradient],
           paddingClasses[padding],

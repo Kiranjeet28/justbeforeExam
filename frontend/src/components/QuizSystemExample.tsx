@@ -28,7 +28,7 @@ export function QuizSystemExample() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   // Sample quiz questions
   const quizQuestions: QuizQuestion[] = [
@@ -102,21 +102,21 @@ export function QuizSystemExample() {
         "Study the characteristics of each planet",
         "Complete practice quiz on solar system",
       ],
-      difficulty: "intermediate",
+      difficulty: "medium",
     },
     {
       topicName: "Chemistry",
       correctCount: 1,
       totalCount: 1,
       suggestedActions: ["Great job! Keep practicing with more complex formulas"],
-      difficulty: "intermediate",
+      difficulty: "medium",
     },
     {
       topicName: "Geography",
       correctCount: 1,
       totalCount: 1,
       suggestedActions: ["Review world capitals and landmarks"],
-      difficulty: "beginner",
+      difficulty: "easy",
     },
   ];
 

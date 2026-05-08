@@ -1,41 +1,45 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import type React from 'react';
 import studyServiceInstance from '@/lib/studyService';
 import { NotesViewPremium } from '@/components/NotesViewPremium';
 import { TopicsGrid } from '@/components/TopicsGrid';
 import { QuizScreenPremium } from '@/components/QuizScreenPremium';
 import { ResultsScreenPremium } from '@/components/ResultsScreenPremium';
-import {
-    QuizScreenSkeleton,
-    NotesViewSkeleton,
-    ResultsScreenSkeleton,
-    InputSectionSkeleton,
-} from '@/components/SkeletonLoaders';
-import { AlertCircle, Upload, Link as LinkIcon, PlusCircle } from 'lucide-react';
+import { QuizScreenSkeleton } from '@/components/SkeletonLoaders';
+import { AlertCircle, Link as LinkIcon, PlusCircle } from 'lucide-react';
+import type {
+    MockQuestionResult,
+    MockQuiz,
+    MockQuizResult,
+    MockRecommendation,
+} from '@/lib/mockDataService';
 
 const studyService = studyServiceInstance;
 
 interface ButtonProps {
-    onClick?: () => void;
+    onClick?: React.MouseEventHandler<HTMLButtonElement>;
     variant?: 'primary' | 'secondary';
     disabled?: boolean;
     className?: string;
+    type?: 'button' | 'submit' | 'reset';
     children: React.ReactNode;
 }
 
-function Button({ onClick, variant, disabled, className, children }: ButtonProps) {
-    const baseClasses = 'px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50';
+function Button({ onClick, variant, disabled, className, type = 'button', children }: ButtonProps) {
+    const baseClasses = 'inline-flex min-h-11 items-center justify-center px-6 py-3 rounded-lg font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
     const variantClasses = variant === 'secondary'
-        ? 'bg-slate-700 hover:bg-slate-600'
-        : 'bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500';
+        ? 'bg-slate-700 text-white hover:bg-slate-600'
+        : 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500';
 
     return (
         <button
+            type={type}
             onClick={onClick}
             disabled={disabled}
-            className={`${baseClasses} ${variantClasses} text-white ${className || ''}`}
+            className={`${baseClasses} ${variantClasses} ${className || ''}`}
         >
             {children}
         </button>
@@ -61,23 +65,93 @@ interface QuizResult {
     percentage: number;
     weakAreas: Array<{ topic: string; percentage: number }>;
     strongAreas: Array<{ topic: string; percentage: number }>;
-    results?: any[];
+    results?: MockQuestionResult[];
     quizId?: string;
     timestamp?: string;
+}
+
+interface PremiumQuestion {
+    id: string;
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    topic?: string;
+}
+
+interface PremiumQuiz {
+    id: string;
+    title: string;
+    questions: PremiumQuestion[];
+    createdAt?: string;
 }
 
 interface WorkspaceState {
     stage: 'input' | 'loading-notes' | 'notes-display' | 'topics' | 'quiz' | 'results' | 'recommendations';
     notes: string;
     topics: Array<{ id: string; name: string; count: number }>;
-    quiz: any;
+    quiz: PremiumQuiz | null;
     quizAnswers: Record<string, number | null>;
     quizResults: QuizResult | null;
-    recommendations: any[];
+    recommendations: MockRecommendation[];
     selectedTopic: string | null;
     error: string | null;
     isLoading: boolean;
 }
+
+const toPremiumQuiz = (quiz: MockQuiz): PremiumQuiz => ({
+    id: quiz.id,
+    title: quiz.title,
+    createdAt: quiz.createdAt,
+    questions: quiz.questions
+        .filter(question => Array.isArray(question.options) && question.options.length > 0)
+        .map(question => {
+            const options = question.options || [];
+            const correctIndex = options.findIndex(option => option === question.correctAnswer);
+
+            return {
+                id: question.id,
+                question: question.question,
+                options,
+                correctAnswer: correctIndex >= 0 ? correctIndex : 0,
+                topic: question.topic,
+            };
+        }),
+});
+
+const getTopicPercentages = (results: MockQuestionResult[]) => {
+    const scores = new Map<string, { correct: number; total: number }>();
+
+    results.forEach(result => {
+        const current = scores.get(result.topic) || { correct: 0, total: 0 };
+        scores.set(result.topic, {
+            correct: current.correct + (result.isCorrect ? 1 : 0),
+            total: current.total + 1,
+        });
+    });
+
+    return scores;
+};
+
+const normalizeAreas = (
+    areas: string[],
+    results: MockQuestionResult[]
+): Array<{ topic: string; percentage: number }> => {
+    const percentages = getTopicPercentages(results);
+
+    return areas.map(topic => {
+        const score = percentages.get(topic);
+        return {
+            topic,
+            percentage: score ? Math.round((score.correct / score.total) * 100) : 0,
+        };
+    });
+};
+
+const toQuizResult = (evaluation: MockQuizResult): QuizResult => ({
+    ...evaluation,
+    weakAreas: normalizeAreas(evaluation.weakAreas, evaluation.results),
+    strongAreas: normalizeAreas(evaluation.strongAreas, evaluation.results),
+});
 
 export function WorkspaceCompletePremium() {
     const [state, setWorkspaceState] = useState<WorkspaceState>({
@@ -120,7 +194,7 @@ export function WorkspaceCompletePremium() {
                 ...prev,
                 stage: 'notes-display',
                 notes: typeof generatedNotes === 'string' ? generatedNotes : generatedNotes.markdown || '',
-                topics: extractedTopics.map((topic: any) => ({
+                topics: extractedTopics.map(topic => ({
                     id: topic.id,
                     name: topic.name,
                     count: topic.questionsCount || 0,
@@ -147,15 +221,15 @@ export function WorkspaceCompletePremium() {
         }));
 
         try {
-            const quiz = await studyService.generateQuiz(topicFilter);
+            const quiz = toPremiumQuiz(await studyService.generateQuiz(topicFilter));
             const initialAnswers: Record<string, number | null> = {};
-            quiz.questions?.forEach((q: any) => {
+            quiz.questions.forEach(q => {
                 initialAnswers[q.id] = null;
             });
 
             setWorkspaceState(prev => ({
                 ...prev,
-                quiz: quiz,
+                quiz,
                 quizAnswers: initialAnswers,
                 isLoading: false,
             }));
@@ -188,37 +262,19 @@ export function WorkspaceCompletePremium() {
         }));
 
         try {
-            // Convert number answers to strings for API
             const stringAnswers: Record<string, string> = {};
-            Object.entries(state.quizAnswers).forEach(([key, value]) => {
-                stringAnswers[key] = value !== null ? String(value) : '';
+            state.quiz?.questions.forEach(question => {
+                const selectedIndex = state.quizAnswers[question.id];
+                if (selectedIndex !== null && selectedIndex !== undefined) {
+                    stringAnswers[question.id] = question.options[selectedIndex] || '';
+                }
             });
             const evaluation = await studyService.evaluateQuiz(stringAnswers);
-
-            const weakAreas = Array.isArray(evaluation.weakAreas)
-                ? evaluation.weakAreas.map((area: any) =>
-                    typeof area === 'string'
-                        ? { topic: area, percentage: 0 }
-                        : area
-                )
-                : [];
-
-            const strongAreas = Array.isArray(evaluation.strongAreas)
-                ? evaluation.strongAreas.map((area: any) =>
-                    typeof area === 'string'
-                        ? { topic: area, percentage: 0 }
-                        : area
-                )
-                : [];
 
             setWorkspaceState(prev => ({
                 ...prev,
                 stage: 'results',
-                quizResults: {
-                    ...evaluation,
-                    weakAreas,
-                    strongAreas,
-                },
+                quizResults: toQuizResult(evaluation),
                 isLoading: false,
             }));
         } catch (error) {
@@ -241,11 +297,7 @@ export function WorkspaceCompletePremium() {
         }));
 
         try {
-            const weakAreaTopics = Array.isArray(state.quizResults?.weakAreas)
-                ? (typeof state.quizResults.weakAreas[0] === 'string'
-                    ? state.quizResults.weakAreas
-                    : state.quizResults.weakAreas.map((area: any) => area.topic))
-                : [];
+            const weakAreaTopics = state.quizResults.weakAreas.map(area => area.topic);
             const recommendations = await studyService.getRecommendations(weakAreaTopics);
 
             setWorkspaceState(prev => ({
@@ -274,7 +326,7 @@ export function WorkspaceCompletePremium() {
             notes: '',
             topics: [],
             quiz: null,
-            quizAnswers: {} as Record<string, string | number | null>,
+            quizAnswers: {},
             quizResults: null,
             recommendations: [],
             selectedTopic: null,
@@ -291,27 +343,27 @@ export function WorkspaceCompletePremium() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-12 flex items-center justify-center"
+            className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 sm:px-6 md:p-12 flex items-center justify-center"
         >
             <div className="max-w-2xl w-full">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="text-center mb-12"
+                    className="text-center mb-8 sm:mb-12"
                 >
-                    <h1 className="text-5xl font-black mb-4 bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+                    <h1 className="text-4xl sm:text-5xl font-black mb-4 bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
                         Just Before Exam
                     </h1>
-                    <p className="text-xl text-slate-300">
+                    <p className="text-base sm:text-xl text-slate-300">
                         Master any topic with AI-powered study materials
                     </p>
                 </motion.div>
 
-                <Card className="p-8 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl">
+                <Card className="p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl">
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-sm font-semibold text-white mb-3">
+                            <label id="study-materials-label" className="block text-sm font-semibold text-white mb-3">
                                 Enter Study Materials
                             </label>
                             {inputUrls.map((url, index) => (
@@ -320,9 +372,12 @@ export function WorkspaceCompletePremium() {
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.1 }}
-                                    className="mb-3 flex gap-2"
+                                    className="mb-3 flex flex-col gap-2 sm:flex-row"
                                 >
                                     <input
+                                        id={`study-material-${index}`}
+                                        aria-labelledby="study-materials-label"
+                                        aria-label={`Study material ${index + 1}`}
                                         type="text"
                                         value={url}
                                         onChange={e => {
@@ -331,13 +386,13 @@ export function WorkspaceCompletePremium() {
                                             setInputUrls(newUrls);
                                         }}
                                         placeholder="Enter URL or paste text..."
-                                        className="flex-1 px-4 py-3 rounded-lg bg-slate-900/50 border border-violet-500/20 text-white placeholder-slate-400 focus:border-violet-500/50 focus:bg-slate-900/70 transition-all"
+                                        className="min-h-11 min-w-0 flex-1 px-4 py-3 rounded-lg bg-slate-900/50 border border-violet-500/20 text-white placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus:border-violet-500/50 focus:bg-slate-900/70 transition-all"
                                     />
                                     {inputUrls.length > 1 && (
                                         <Button
                                             onClick={() => setInputUrls(inputUrls.filter((_, i) => i !== index))}
                                             variant="secondary"
-                                            className="px-3"
+                                            className="shrink-0 px-3"
                                         >
                                             Remove
                                         </Button>
@@ -397,7 +452,7 @@ export function WorkspaceCompletePremium() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    className="max-w-4xl mx-auto px-6 md:px-12 py-12"
+                    className="max-w-4xl mx-auto px-4 sm:px-6 md:px-12 py-10 sm:py-12"
                 >
                     <TopicsGrid
                         topics={state.topics.map(t => ({
@@ -409,6 +464,8 @@ export function WorkspaceCompletePremium() {
                         onTopicSelect={topicId => {
                             if (topicId) {
                                 handleGenerateQuiz(topicId);
+                            } else {
+                                setWorkspaceState(prev => ({ ...prev, selectedTopic: null }));
                             }
                         }}
                     />
@@ -417,7 +474,7 @@ export function WorkspaceCompletePremium() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6 }}
-                        className="mt-8 flex gap-3"
+                        className="mt-8 flex flex-col gap-3 sm:flex-row"
                     >
                         <Button
                             onClick={() => handleGenerateQuiz()}
@@ -428,7 +485,7 @@ export function WorkspaceCompletePremium() {
                         <Button
                             onClick={handleReset}
                             variant="secondary"
-                            className="px-6"
+                            className="sm:px-6"
                         >
                             Reset
                         </Button>
@@ -440,6 +497,17 @@ export function WorkspaceCompletePremium() {
 
     const renderQuiz = () => (
         <AnimatePresence mode="wait">
+            {state.isLoading && !state.quiz?.questions.length && (
+                <motion.div
+                    key="quiz-loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-12 flex items-center justify-center"
+                >
+                    <QuizScreenSkeleton />
+                </motion.div>
+            )}
             {state.quiz?.questions && state.quiz.questions.length > 0 && (
                 <QuizScreenPremium
                     key="quiz"
@@ -458,7 +526,7 @@ export function WorkspaceCompletePremium() {
             {state.quizResults && (
                 <ResultsScreenPremium
                     key="results"
-                    score={state.quizResults.percentage}
+                    score={state.quizResults.score}
                     totalQuestions={state.quizResults.totalQuestions}
                     weakAreas={state.quizResults.weakAreas || []}
                     strongAreas={state.quizResults.strongAreas || []}
@@ -476,7 +544,7 @@ export function WorkspaceCompletePremium() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-12"
+            className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 sm:px-6 md:p-12"
         >
             <div className="max-w-4xl mx-auto">
                 <motion.div
@@ -484,7 +552,7 @@ export function WorkspaceCompletePremium() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-8"
                 >
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent mb-2">
+                    <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent mb-2">
                         Recommended Resources
                     </h1>
                     <p className="text-slate-400">
@@ -492,18 +560,28 @@ export function WorkspaceCompletePremium() {
                     </p>
                 </motion.div>
 
+                {state.isLoading ? (
+                    <div className="space-y-4" role="status" aria-live="polite" aria-label="Loading recommendations">
+                        {[0, 1, 2].map(item => (
+                            <div
+                                key={item}
+                                className="h-28 rounded-lg border border-violet-500/10 bg-slate-800/30 animate-pulse"
+                            />
+                        ))}
+                    </div>
+                ) : (
                 <div className="grid gap-4">
                     {state.recommendations.map((rec, index) => (
                         <motion.div
-                            key={index}
+                            key={rec.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
                         >
                             <Card className="p-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl hover:border-violet-500/40 transition-all">
-                                <div className="flex items-start gap-4">
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-bold text-white mb-1">{rec.title}</h3>
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-lg font-bold text-white mb-1 break-words">{rec.title}</h3>
                                         <p className="text-slate-400 text-sm mb-3">{rec.description}</p>
                                         <div className="flex gap-2 flex-wrap">
                                             <span className="text-xs px-3 py-1 rounded-full bg-violet-500/20 text-violet-300">
@@ -514,20 +592,27 @@ export function WorkspaceCompletePremium() {
                                             </span>
                                         </div>
                                     </div>
-                                    <Button className="bg-gradient-to-r from-violet-600 to-cyan-600 text-white px-4">
+                                    <a
+                                        href={rec.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-violet-600 to-cyan-600 px-4 py-3 font-semibold text-white transition-all hover:from-violet-500 hover:to-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                                        aria-label={`View resource: ${rec.title}`}
+                                    >
                                         <LinkIcon size={16} className="mr-2" /> View
-                                    </Button>
+                                    </a>
                                 </div>
                             </Card>
                         </motion.div>
                     ))}
                 </div>
+                )}
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    className="mt-8 flex gap-3"
+                    className="mt-8 flex flex-col gap-3 sm:flex-row"
                 >
                     <Button
                         onClick={() => handleRetakeQuiz()}

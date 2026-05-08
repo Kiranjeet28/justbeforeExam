@@ -29,7 +29,7 @@ export interface UseApiState<T> {
   success: boolean;
 }
 
-export interface UseApiOptions<T = any> {
+export interface UseApiOptions<T = unknown> {
   onSuccess?: (data: T) => void;
   onError?: (error: Error) => void;
   onSettled?: (data: T | null, error: Error | null) => void;
@@ -76,38 +76,40 @@ export function useApi<T>(
       error: null,
     }));
 
-    try {
-      const result = await apiFn();
-      setState({
-        data: result,
-        loading: false,
-        error: null,
-        success: true,
-      });
-      options.onSuccess?.(result);
-      options.onSettled?.(result, null);
-      retryCountRef.current = 0;
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
+    while (true) {
+      try {
+        const result = await apiFn();
+        setState({
+          data: result,
+          loading: false,
+          error: null,
+          success: true,
+        });
+        options.onSuccess?.(result);
+        options.onSettled?.(result, null);
+        retryCountRef.current = 0;
+        return result;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
 
-      // Handle rate limiting with retry
-      if (error instanceof RateLimitError && retryCountRef.current < (options.retryCount || 3)) {
-        retryCountRef.current++;
-        const delay = options.retryDelay || error.retryAfter * 1000;
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return execute();
+        // Handle rate limiting with retry
+        if (error instanceof RateLimitError && retryCountRef.current < (options.retryCount || 3)) {
+          retryCountRef.current++;
+          const delay = options.retryDelay || error.retryAfter * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+
+        setState({
+          data: null,
+          loading: false,
+          error,
+          success: false,
+        });
+        options.onError?.(error);
+        options.onSettled?.(null, error);
+        return null;
       }
-
-      setState({
-        data: null,
-        loading: false,
-        error,
-        success: false,
-      });
-      options.onError?.(error);
-      options.onSettled?.(null, error);
-      return null;
     }
   }, [apiFn, options]);
 
@@ -128,11 +130,18 @@ export function useApi<T>(
 
   // Auto-fetch on mount if enabled
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     if (options.autoFetch) {
-      execute();
+      timeoutId = setTimeout(() => {
+        void execute();
+      }, 0);
     }
 
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
@@ -16,7 +16,7 @@ export type BadgeColor =
   | "neutral";
 export type BadgeSize = "xs" | "sm" | "md" | "lg";
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface BadgeProps extends HTMLMotionProps<"span"> {
   variant?: BadgeVariant;
   color?: BadgeColor;
   size?: BadgeSize;

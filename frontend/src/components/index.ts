@@ -1,6 +1,6 @@
 // Components - Header
 export { Header } from "./Header";
-export type { default as HeaderComponent } from "./Header";
+export type { HeaderProps } from "./Header";
 
 // Examples (for documentation/showcase purposes)
 export {
@@ -24,12 +24,12 @@ export {
   CardContent,
   CardFooter,
 } from "./ui/Card";
-export { Alert } from "./ui/Alert";
-export { Badge } from "./ui/Badge";
+export { default as Alert } from "./ui/Alert";
+export { default as Badge } from "./ui/Badge";
 export { default as Input } from "./ui/Input";
-export { Modal } from "./ui/Modal";
-export { Toast } from "./ui/Toast";
-export { Loader } from "./ui/Loader";
+export { default as Modal } from "./ui/Modal";
+export { default as Toast } from "./ui/Toast";
+export { default as Loader } from "./ui/Loader";
 
 // Quiz and Results Components
 export { QuizView } from "./QuizView";

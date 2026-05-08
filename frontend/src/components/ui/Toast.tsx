@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { X, AlertCircle, CheckCircle, AlertTriangle, Info } from "lucide-react";
 
@@ -19,7 +19,7 @@ export interface ToastAction {
   onClick: () => void;
 }
 
-export interface ToastProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ToastProps extends HTMLMotionProps<"div"> {
   id?: string;
   type?: ToastType;
   title?: string;

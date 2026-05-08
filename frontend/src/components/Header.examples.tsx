@@ -107,7 +107,7 @@ export const ThemeToggleHeaderExample = () => {
  */
 export const FullFeaturedHeaderExample = () => {
   const [isDark, setIsDark] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(5);
+  const [notificationCount] = useState(5);
 
   const navItems = [
     { label: "Home", href: "/", icon: <Home size={18} /> },
@@ -176,8 +176,8 @@ export const MobileOptimizedHeaderExample = () => {
  * Shows how to update badges dynamically (e.g., for notifications or pending tasks)
  */
 export const DynamicBadgeHeaderExample = () => {
-  const [pendingTasks, setPendingTasks] = useState(2);
-  const [unreadMessages, setUnreadMessages] = useState(7);
+  const [pendingTasks] = useState(2);
+  const [unreadMessages] = useState(7);
 
   const navItems = [
     { label: "Home", href: "/", icon: <Home size={18} /> },
@@ -296,7 +296,7 @@ export default function NotesPage() {
  */
 export const CompletePageSetupExample = () => {
   const [isDark, setIsDark] = useState(true);
-  const [notifications, setNotifications] = useState(3);
+  const [notifications] = useState(3);
 
   const navItems = [
     { label: "Home", href: "/", icon: <Home size={18} /> },

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Copy,
   Download,
@@ -11,10 +11,8 @@ import {
   Clock,
   FileText,
   AlertCircle,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 
 export interface ImprovedNotesViewProps {
@@ -367,7 +365,6 @@ export const ImprovedNotesView: React.FC<ImprovedNotesViewProps> = ({
   className,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const [copied2, setCopied2] = useState(false);
 
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);

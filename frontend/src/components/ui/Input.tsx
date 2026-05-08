@@ -9,7 +9,7 @@ export type InputType = "text" | "email" | "password" | "number" | "search" | "t
 export type InputState = "default" | "error" | "success" | "warning";
 export type InputSize = "sm" | "md" | "lg";
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: string;
   placeholder?: string;
   helperText?: string;
@@ -69,12 +69,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     const [showPassword, setShowPassword] = React.useState(false);
-    const [inputState, setInputState] = React.useState<InputState>(state);
-
-    React.useEffect(() => {
-      setInputState(state);
-    }, [state]);
-
     const inputType = showPassword && type === "password" ? "text" : type;
     const message = errorMessage || successMessage || helperText;
     const displayState = errorMessage ? "error" : successMessage ? "success" : state;

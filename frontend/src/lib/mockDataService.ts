@@ -835,8 +835,15 @@ export const mockDataService = {
     ): Promise<MockQuizResult> => {
         await new Promise((resolve) => setTimeout(resolve, 800));
 
+        const answeredQuestionIds = new Set(Object.keys(answers));
+        const questionsToEvaluate = MOCK_QUIZ.questions.filter((q) =>
+            answeredQuestionIds.has(q.id)
+        );
+        const sourceQuestions =
+            questionsToEvaluate.length > 0 ? questionsToEvaluate : MOCK_QUIZ.questions;
+
         // Calculate results based on answers
-        const results: MockQuestionResult[] = MOCK_QUIZ.questions.map((q) => {
+        const results: MockQuestionResult[] = sourceQuestions.map((q) => {
             const userAnswer = answers[q.id] || "";
             const isCorrect = userAnswer === q.correctAnswer;
 
@@ -872,11 +879,11 @@ export const mockDataService = {
         });
 
         const weakAreas = Object.entries(topicScores)
-            .filter(([_, scores]) => scores.correct / scores.total < 0.7)
+            .filter((entry) => entry[1].correct / entry[1].total < 0.7)
             .map(([topic]) => topic);
 
         const strongAreas = Object.entries(topicScores)
-            .filter(([_, scores]) => scores.correct / scores.total >= 0.7)
+            .filter((entry) => entry[1].correct / entry[1].total >= 0.7)
             .map(([topic]) => topic);
 
         return {

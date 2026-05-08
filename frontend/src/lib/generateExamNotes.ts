@@ -37,6 +37,15 @@ export class RateLimitedException extends Error {
   }
 }
 
+type RateLimitDetail = {
+  retry_after?: number;
+  retry_at?: string;
+  message?: string;
+};
+
+const isRateLimitDetail = (detail: unknown): detail is RateLimitDetail =>
+  typeof detail === "object" && detail !== null;
+
 export async function generateExamNotes(content: string): Promise<GenerateExamNotesResult> {
   const res = await fetch(`${API_BASE}/api/v1/generate`, {
     method: "POST",
@@ -52,7 +61,7 @@ export async function generateExamNotes(content: string): Promise<GenerateExamNo
 
   // Handle rate limit (429) responses
   if (res.status === 429) {
-    const detailObj = typeof data.detail === "object" ? (data.detail as any) : null;
+    const detailObj = isRateLimitDetail(data.detail) ? data.detail : null;
     const retryAfter = detailObj?.retry_after || data.retry_after || 60;
     const retryAt = detailObj?.retry_at || data.retry_at || new Date(Date.now() + retryAfter * 1000).toISOString();
     const message = detailObj?.message || data.detail || "Rate limited. Please try again later.";

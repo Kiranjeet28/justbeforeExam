@@ -42,12 +42,6 @@ const CircularProgress: React.FC<{
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percentage / 100) * circumference;
 
-  const getColor = () => {
-    if (percentage >= 80) return "from-emerald-400 to-green-500";
-    if (percentage >= 60) return "from-amber-400 to-orange-500";
-    return "from-red-400 to-rose-500";
-  };
-
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative w-48 h-48">

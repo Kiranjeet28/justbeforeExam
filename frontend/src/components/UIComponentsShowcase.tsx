@@ -16,14 +16,13 @@ import {
   Loader,
   Alert,
 } from "./ui";
-import { Heart, Mail, Lock, Search, Sparkles, Zap } from "lucide-react";
+import { Heart, Mail, Lock, Search, Zap } from "lucide-react";
 
 export const UIComponentsShowcase: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const showToast = (type: "success" | "error" | "warning" | "info", message: string) => {
     setToastMessage(message);
@@ -105,7 +104,7 @@ export const UIComponentsShowcase: React.FC = () => {
                 label="Search"
                 placeholder="Search components..."
                 icon={<Search size={18} />}
-                variant="filled"
+                type="search"
               />
               <Input
                 label="Error State"

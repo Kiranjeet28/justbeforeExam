@@ -3,22 +3,24 @@
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, Zap, Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type React from 'react';
 
 interface ButtonProps {
-    onClick?: () => void;
+    onClick?: React.MouseEventHandler<HTMLButtonElement>;
     variant?: 'primary' | 'secondary';
     className?: string;
     children: React.ReactNode;
 }
 
 function Button({ onClick, variant, className, children }: ButtonProps) {
-    const baseClasses = 'px-6 py-3 rounded-lg font-semibold transition-all duration-200';
+    const baseClasses = 'inline-flex min-h-11 items-center justify-center px-6 py-3 rounded-lg font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.98]';
     const variantClasses = variant === 'secondary'
         ? 'bg-slate-700 hover:bg-slate-600 text-white'
         : 'bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 text-white';
 
     return (
         <button
+            type="button"
             onClick={onClick}
             className={`${baseClasses} ${variantClasses} ${className || ''}`}
         >
@@ -69,7 +71,7 @@ export function ResultsScreenPremium({
     onViewRecommendations,
     onStartOver,
 }: ResultsScreenPremiumProps) {
-    const percentage = Math.round((score / totalQuestions) * 100);
+    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
     const [displayScore, setDisplayScore] = useState(0);
 
     useEffect(() => {
@@ -79,7 +81,7 @@ export function ResultsScreenPremium({
                     clearInterval(timer);
                     return percentage;
                 }
-                return prev + 2;
+                return Math.min(prev + 2, percentage);
             });
         }, 30);
         return () => clearInterval(timer);
@@ -105,48 +107,24 @@ export function ResultsScreenPremium({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-12"
+            className="w-full min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 sm:px-6 md:p-12"
         >
-            {/* Background Orbs */}
-            <div className="fixed inset-0 pointer-events-none">
-                <motion.div
-                    className="absolute top-40 right-40 w-80 h-80 bg-gradient-to-br from-violet-600/15 to-cyan-600/5 rounded-full blur-3xl"
-                    animate={{
-                        y: [0, 60, 0],
-                        x: [0, 30, 0],
-                        scale: [0.9, 1.1, 0.9],
-                    }}
-                    transition={{ duration: 10, repeat: Infinity }}
-                />
-                <motion.div
-                    className="absolute -bottom-40 left-1/3 w-96 h-96 bg-gradient-to-tl from-cyan-600/15 to-violet-600/5 rounded-full blur-3xl"
-                    animate={{
-                        y: [0, -60, 0],
-                        x: [0, -30, 0],
-                        scale: [1.1, 0.9, 1.1],
-                    }}
-                    transition={{ duration: 12, repeat: Infinity }}
-                />
-            </div>
-
             <div className="relative z-10 max-w-2xl mx-auto">
                 {/* Score Circle Animation */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6, type: 'spring', stiffness: 100 }}
-                    className="mb-12 flex flex-col items-center"
+                    className="mb-10 flex flex-col items-center sm:mb-12"
                 >
-                    <div className="relative w-48 h-48 mb-6">
+                    <div className="relative w-40 h-40 mb-6 sm:h-48 sm:w-48">
                         {/* Outer Glow */}
-                        <motion.div
+                        <div
                             className={`absolute inset-0 rounded-full bg-gradient-to-r ${getScoreColor()} opacity-20 blur-2xl`}
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
                         />
 
                         {/* Circle Background */}
-                        <svg className="w-full h-full transform -rotate-90">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 192 192" role="img" aria-label={`Quiz accuracy ${displayScore}%`}>
                             <circle
                                 cx="96"
                                 cy="96"
@@ -177,13 +155,9 @@ export function ResultsScreenPremium({
 
                         {/* Center Content */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <motion.span
-                                className={`text-5xl font-black bg-gradient-to-r ${getScoreColor()} bg-clip-text text-transparent`}
-                                animate={{ scale: [1, 1.05, 1] }}
-                                transition={{ duration: 0.8, repeat: Infinity, repeatType: 'mirror' }}
-                            >
+                            <span className={`text-4xl font-black bg-gradient-to-r ${getScoreColor()} bg-clip-text text-transparent sm:text-5xl`}>
                                 {displayScore}%
-                            </motion.span>
+                            </span>
                             <span className="text-sm text-slate-400">Accuracy</span>
                         </div>
                     </div>
@@ -206,7 +180,7 @@ export function ResultsScreenPremium({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="grid grid-cols-2 gap-4 mb-8"
+                    className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2"
                 >
                     <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl">
                         <div className="flex items-center gap-2 mb-2">
@@ -221,13 +195,9 @@ export function ResultsScreenPremium({
                             <Zap size={18} className="text-cyan-400" />
                             <span className="text-xs text-slate-400">XP Earned</span>
                         </div>
-                        <motion.p
-                            className="text-2xl font-bold text-white"
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 0.6, delay: 1 }}
-                        >
+                        <p className="text-2xl font-bold text-white">
                             +{score * 10}
-                        </motion.p>
+                        </p>
                     </Card>
                 </motion.div>
 
@@ -246,14 +216,14 @@ export function ResultsScreenPremium({
                             {weakAreas.map((area, index) => (
                                 <motion.div
                                     key={index}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.7 + index * 0.1 }}
                                     className="p-3 rounded-lg bg-red-500/10 border border-red-500/20"
                                 >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-sm font-medium text-red-300">{area.topic}</span>
-                                        <span className="text-xs text-red-400">{area.percentage}% correct</span>
+                                    <div className="flex flex-col gap-1 mb-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <span className="break-words text-sm font-medium text-red-300">{area.topic}</span>
+                                        <span className="shrink-0 text-xs text-red-400">{area.percentage}% correct</span>
                                     </div>
                                     <div className="w-full h-1 bg-red-900/30 rounded-full overflow-hidden">
                                         <motion.div
@@ -284,14 +254,14 @@ export function ResultsScreenPremium({
                             {strongAreas.map((area, index) => (
                                 <motion.div
                                     key={index}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.9 + index * 0.1 }}
                                     className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
                                 >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-sm font-medium text-emerald-300">{area.topic}</span>
-                                        <span className="text-xs text-emerald-400">{area.percentage}% correct</span>
+                                    <div className="flex flex-col gap-1 mb-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <span className="break-words text-sm font-medium text-emerald-300">{area.topic}</span>
+                                        <span className="shrink-0 text-xs text-emerald-400">{area.percentage}% correct</span>
                                     </div>
                                     <div className="w-full h-1 bg-emerald-900/30 rounded-full overflow-hidden">
                                         <motion.div

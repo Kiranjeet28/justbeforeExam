@@ -38,13 +38,6 @@ const PercentageBar: React.FC<{
     return "from-red-500 to-rose-600";
   };
 
-  const getIndicatorColor = () => {
-    if (percentage >= 80) return "bg-emerald-500/30";
-    if (percentage >= 60) return "bg-amber-500/30";
-    if (percentage >= 40) return "bg-orange-500/30";
-    return "bg-red-500/30";
-  };
-
   return (
     <div className="space-y-2">
       <div className="relative w-full h-3 bg-slate-700/40 rounded-full overflow-hidden">

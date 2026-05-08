@@ -15,14 +15,15 @@ export function TopicsGrid({ topics, selectedTopic, onTopicSelect }: TopicsGridP
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
         >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold text-white">Topics</h3>
                 {selectedTopic && (
                     <motion.button
+                        type="button"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         onClick={() => onTopicSelect(null)}
-                        className="text-xs px-3 py-1 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                        className="inline-flex min-h-10 w-fit items-center justify-center rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-300 transition-colors hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                     >
                         Clear Filter
                     </motion.button>
@@ -36,44 +37,26 @@ export function TopicsGrid({ topics, selectedTopic, onTopicSelect }: TopicsGridP
                     return (
                         <motion.button
                             key={topic.id}
+                            type="button"
+                            aria-pressed={isSelected}
+                            aria-label={`${isSelected ? 'Clear' : 'Start'} ${topic.name} topic quiz`}
                             onClick={() => onTopicSelect(isSelected ? null : topic.id)}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: index * 0.05 }}
-                            whileHover={{ scale: 1.05 }}
+                            whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.95 }}
-                            className={`relative px-4 py-3 rounded-lg font-medium transition-all duration-300 overflow-hidden group ${isSelected
+                            className={`group relative min-h-12 overflow-hidden rounded-lg px-4 py-3 font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${isSelected
                                     ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-lg shadow-violet-500/50'
                                     : 'bg-slate-800/50 text-slate-100 border border-slate-700 hover:border-violet-500/50'
                                 }`}
                         >
-                            {/* Glowing Border for Selected */}
-                            {isSelected && (
-                                <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-violet-400/30 to-cyan-400/30 rounded-lg blur"
-                                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    style={{ pointerEvents: 'none' }}
-                                />
-                            )}
-
-                            <div className="relative z-10 flex items-center justify-between">
-                                <span>{topic.name}</span>
-                                <span className="text-xs ml-2 px-2 py-0.5 rounded-full bg-slate-900/50">
+                            <div className="relative z-10 flex items-center justify-between gap-3">
+                                <span className="min-w-0 break-words text-left">{topic.name}</span>
+                                <span className="ml-2 shrink-0 rounded-full bg-slate-900/50 px-2 py-0.5 text-xs">
                                     {topic.count}
                                 </span>
                             </div>
-
-                            {/* Hover Shimmer */}
-                            {!isSelected && (
-                                <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                                    initial={{ x: '-100%' }}
-                                    whileHover={{ x: '100%' }}
-                                    transition={{ duration: 0.6 }}
-                                    style={{ pointerEvents: 'none' }}
-                                />
-                            )}
                         </motion.button>
                     );
                 })}

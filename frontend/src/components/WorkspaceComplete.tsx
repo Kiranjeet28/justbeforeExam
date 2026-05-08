@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Sparkles,
@@ -380,7 +380,6 @@ export default function Workspace() {
     const renderQuiz = () => {
         if (!state.quiz) return null;
 
-        const currentQuestion = state.quiz.questions[0]; // Show first question for simplicity
         const progress =
             (Object.keys(state.quizAnswers).length / state.quiz.questions.length) *
             100;

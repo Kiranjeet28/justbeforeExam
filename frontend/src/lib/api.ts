@@ -164,7 +164,7 @@ class APIClient {
       }
 
       // Parse response
-      let data: any;
+      let data: unknown;
       const contentType = response.headers.get("content-type");
       if (contentType?.includes("application/json")) {
         data = await response.json();
@@ -211,10 +211,19 @@ class APIClient {
   /**
    * Handle error responses from backend
    */
-  private handleErrorResponse(status: number, data: any): never {
+  private handleErrorResponse(status: number, data: unknown): never {
+    const errorData =
+      typeof data === "object" && data !== null
+        ? (data as Partial<ErrorResponse>)
+        : null;
     const errorMessage =
-      typeof data === "string" ? data : data?.detail || "An error occurred";
-    const errorCode = data?.error_code;
+      typeof data === "string"
+        ? data
+        : typeof errorData?.detail === "string"
+          ? errorData.detail
+          : "An error occurred";
+    const errorCode =
+      typeof errorData?.error_code === "string" ? errorData.error_code : undefined;
 
     switch (status) {
       case 400:

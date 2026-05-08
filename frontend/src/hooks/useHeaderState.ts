@@ -48,6 +48,15 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", icon: undefined },
 ];
 
+const applyThemePreference = (dark: boolean) => {
+  if (dark) {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+  localStorage.setItem("theme", dark ? "dark" : "light");
+};
+
 /**
  * Custom hook for managing Header component state
  * Provides theme, notification, navigation, and breadcrumb management
@@ -84,54 +93,57 @@ export function useHeaderState(
   // Hydration safety
   const [mounted, setMounted] = useState(false);
 
-  // Initialize theme from localStorage and system preferences on mount
-  useEffect(() => {
-    setMounted(true);
-
-    // Check localStorage for saved preference
-    const savedTheme = localStorage.getItem("theme");
-
-    if (savedTheme) {
-      const isDarkTheme = savedTheme === "dark";
-      setIsDarkState(isDarkTheme);
-      applyThemeToDocument(isDarkTheme);
-    } else {
-      // Check system preference
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      setIsDarkState(prefersDark);
-      applyThemeToDocument(prefersDark);
-    }
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkState(e.matches);
-      applyThemeToDocument(e.matches);
-    };
-
-    // Modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-    // Legacy browsers
-    else {
-      mediaQuery.addListener(handleChange);
-      return () => mediaQuery.removeListener(handleChange);
-    }
-  }, []);
-
   // Apply theme to document and localStorage
   const applyThemeToDocument = useCallback((dark: boolean) => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", dark ? "dark" : "light");
+    applyThemePreference(dark);
   }, []);
+
+  // Initialize theme from localStorage and system preferences on mount
+  useEffect(() => {
+    let cleanupThemeListener: (() => void) | undefined;
+    const timeoutId = setTimeout(() => {
+      setMounted(true);
+
+      // Check localStorage for saved preference
+      const savedTheme = localStorage.getItem("theme");
+
+      if (savedTheme) {
+        const isDarkTheme = savedTheme === "dark";
+        setIsDarkState(isDarkTheme);
+        applyThemeToDocument(isDarkTheme);
+      } else {
+        // Check system preference
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        setIsDarkState(prefersDark);
+        applyThemeToDocument(prefersDark);
+      }
+
+      // Listen for system theme changes
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = (e: MediaQueryListEvent) => {
+        setIsDarkState(e.matches);
+        applyThemeToDocument(e.matches);
+      };
+
+      // Modern browsers
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener("change", handleChange);
+        cleanupThemeListener = () => mediaQuery.removeEventListener("change", handleChange);
+      }
+      // Legacy browsers
+      else {
+        mediaQuery.addListener(handleChange);
+        cleanupThemeListener = () => mediaQuery.removeListener(handleChange);
+      }
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      cleanupThemeListener?.();
+    };
+  }, [applyThemeToDocument]);
 
   // Theme management
   const toggleTheme = useCallback(() => {
@@ -262,32 +274,30 @@ export function useHeaderState(
 export function useTheme() {
   const [isDark, setIsDarkState] = useState(true);
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      const isDarkTheme = savedTheme === "dark";
-      setIsDarkState(isDarkTheme);
-      applyTheme(isDarkTheme);
-    } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      setIsDarkState(prefersDark);
-      applyTheme(prefersDark);
-    }
+  const applyTheme = useCallback((dark: boolean) => {
+    applyThemePreference(dark);
   }, []);
 
-  const applyTheme = (dark: boolean) => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", dark ? "dark" : "light");
-  };
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setMounted(true);
+
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme) {
+        const isDarkTheme = savedTheme === "dark";
+        setIsDarkState(isDarkTheme);
+        applyTheme(isDarkTheme);
+      } else {
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        setIsDarkState(prefersDark);
+        applyTheme(prefersDark);
+      }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [applyTheme]);
 
   const toggleTheme = useCallback(() => {
     setIsDarkState((prev) => {
@@ -295,12 +305,12 @@ export function useTheme() {
       applyTheme(newTheme);
       return newTheme;
     });
-  }, []);
+  }, [applyTheme]);
 
   const setTheme = useCallback((dark: boolean) => {
     setIsDarkState(dark);
     applyTheme(dark);
-  }, []);
+  }, [applyTheme]);
 
   return { isDark, toggleTheme, setTheme, mounted };
 }

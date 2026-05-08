@@ -33,7 +33,7 @@ interface BreadcrumbItem {
   href?: string;
 }
 
-interface HeaderProps {
+export interface HeaderProps {
   logo?: string;
   logoAlt?: string;
   title?: string;

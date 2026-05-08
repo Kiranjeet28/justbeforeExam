@@ -3,10 +3,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
+import type React from 'react';
 import ReactMarkdown from 'react-markdown';
 
 interface CardProps {
-    onClick?: () => void;
     className?: string;
     children: React.ReactNode;
 }
@@ -14,27 +14,24 @@ interface CardProps {
 interface ButtonProps {
     onClick?: (e: React.MouseEvent) => void;
     variant?: 'secondary' | 'primary';
-    size?: 'sm' | 'md' | 'lg';
     className?: string;
     children: React.ReactNode;
 }
 
-function Card({ onClick, className, children }: CardProps) {
+function Card({ className, children }: CardProps) {
     return (
-        <div
-            onClick={onClick}
-            className={`rounded-lg ${className || ''}`}
-        >
+        <section className={`rounded-lg ${className || ''}`}>
             {children}
-        </div>
+        </section>
     );
 }
 
-function Button({ onClick, variant, size, className, children }: ButtonProps) {
-    const baseClasses = 'px-4 py-2 rounded-lg transition-all';
+function Button({ onClick, variant, className, children }: ButtonProps) {
+    const baseClasses = 'inline-flex min-h-11 items-center justify-center px-4 py-2 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950';
     const variantClasses = variant === 'secondary' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-violet-600 hover:bg-violet-500';
     return (
         <button
+            type="button"
             onClick={onClick}
             className={`${baseClasses} ${variantClasses} ${className || ''}`}
         >
@@ -83,22 +80,8 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-12"
+            className="w-full min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 sm:px-6 md:p-12"
         >
-            {/* Background Orbs */}
-            <div className="fixed inset-0 pointer-events-none">
-                <motion.div
-                    className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-violet-600/10 to-cyan-600/5 rounded-full blur-3xl"
-                    animate={{ y: [0, 40, 0], x: [0, 25, 0] }}
-                    transition={{ duration: 8, repeat: Infinity }}
-                />
-                <motion.div
-                    className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tl from-cyan-600/10 to-violet-600/5 rounded-full blur-3xl"
-                    animate={{ y: [0, -40, 0], x: [0, -25, 0] }}
-                    transition={{ duration: 10, repeat: Infinity }}
-                />
-            </div>
-
             <div className="relative z-10 max-w-4xl mx-auto">
                 {/* Header */}
                 <motion.div
@@ -106,7 +89,7 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-8"
                 >
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent mb-2">
+                    <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent mb-2">
                         Study Notes
                     </h1>
                     <p className="text-slate-400">
@@ -126,22 +109,26 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                             >
-                                <Card
-                                    onClick={() => toggleSection(section.id)}
-                                    className="cursor-pointer p-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl hover:border-violet-500/40 transition-all duration-300 group"
-                                >
+                                <Card className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-violet-500/20 backdrop-blur-xl transition-all duration-300">
                                     {/* Section Header */}
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-xl font-bold text-white group-hover:text-violet-300 transition-colors">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSection(section.id)}
+                                        aria-expanded={isExpanded}
+                                        aria-controls={`notes-section-${section.id}`}
+                                        className="group flex min-h-14 w-full items-center justify-between gap-3 rounded-lg p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:p-6"
+                                    >
+                                        <span className="min-w-0 break-words text-lg font-bold text-white transition-colors group-hover:text-violet-300 sm:text-xl">
                                             {section.title}
-                                        </h2>
+                                        </span>
                                         <motion.div
                                             animate={{ rotate: isExpanded ? 180 : 0 }}
                                             transition={{ duration: 0.2 }}
+                                            className="shrink-0"
                                         >
                                             <ChevronDown size={24} className="text-violet-400" />
                                         </motion.div>
-                                    </div>
+                                    </button>
 
                                     {/* Expandable Content */}
                                     <AnimatePresence>
@@ -151,7 +138,8 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                                                 animate={{ opacity: 1, height: 'auto' }}
                                                 exit={{ opacity: 0, height: 0 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="mt-6 pt-6 border-t border-slate-700/50"
+                                                id={`notes-section-${section.id}`}
+                                                className="mx-4 pb-4 pt-6 border-t border-slate-700/50 sm:mx-6 sm:pb-6"
                                             >
                                                 {/* Copy Button */}
                                                 <div className="flex justify-end mb-4">
@@ -161,7 +149,6 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                                                             copyToClipboard(section.id, section.content);
                                                         }}
                                                         variant="secondary"
-                                                        size="sm"
                                                         className="text-xs"
                                                     >
                                                         {copiedId === section.id ? (
@@ -177,7 +164,7 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                                                 </div>
 
                                                 {/* Markdown Content */}
-                                                <div className="prose prose-invert max-w-none prose-headings:text-violet-300 prose-p:text-slate-300 prose-strong:text-white prose-code:text-cyan-300 prose-code:bg-slate-800/50 prose-code:px-2 prose-code:py-1 prose-code:rounded">
+                                                <div className="prose prose-invert max-w-none overflow-x-auto prose-headings:break-words prose-headings:text-violet-300 prose-p:break-words prose-p:text-slate-300 prose-strong:text-white prose-code:break-words prose-code:text-cyan-300 prose-code:bg-slate-800/50 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:overflow-x-auto">
                                                     <ReactMarkdown>
                                                         {section.content}
                                                     </ReactMarkdown>
@@ -190,16 +177,6 @@ export function NotesViewPremium({ content }: NotesViewPremiumProps) {
                         );
                     })}
                 </div>
-
-                {/* Footer */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-12 text-center text-slate-500 text-sm"
-                >
-                    <p>Click on any section to expand or collapse</p>
-                </motion.div>
             </div>
         </motion.div>
     );

@@ -475,7 +475,7 @@ export default function ReportTab({ sourcesCount }: ReportTabProps) {
                 transition={{ delay: 0.4 }}
                 className="text-slate-400 text-center max-w-sm leading-relaxed"
               >
-                We're analyzing your sources and creating a comprehensive study
+                We&apos;re analyzing your sources and creating a comprehensive study
                 guide. This may take a moment.
               </motion.p>
 
