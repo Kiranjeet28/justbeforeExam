@@ -2,26 +2,23 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Pencil, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { TextGenerateEffect } from "@/components/TextGenerateEffect";
-import ReportTab from "@/components/ReportTab";
-import TestResourcesSidebar from "@/components/TestResourcesSidebar";
 
-const Workspace = dynamic(() => import("@/components/Workspace"), {
-  ssr: false,
-  loading: () => (
-    <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-8 shadow-lg backdrop-blur-sm">
-      <div className="flex items-center gap-3">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-400" />
-        <p className="text-slate-300">Loading workspace...</p>
+const WorkspaceComplete = dynamic(
+  () => import("@/components/WorkspaceComplete"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-8 shadow-lg backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-400" />
+          <p className="text-slate-300">Loading workspace...</p>
+        </div>
       </div>
-    </div>
-  ),
-});
-
-type TabType = "notes" | "report";
+    ),
+  }
+);
 
 // Enhanced Background Pattern Component with Smooth Animated Effects
 const BackgroundPattern = () => (
@@ -74,14 +71,7 @@ const BackgroundPattern = () => (
 );
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabType>("notes");
-  const [sourcesCount, setSourcesCount] = useState(0);
-  const [selectedTestUrl, setSelectedTestUrl] = useState<string>("");
-
-  const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: "notes", label: "Notes", icon: <Pencil size={18} /> },
-    { id: "report", label: "Report", icon: <FileText size={18} /> },
-  ];
+  const [activeTab, setActiveTab] = useState<"notes">("notes");
 
   // Enhanced animation variants with proper Framer Motion easing
   const containerVariants = {
@@ -190,11 +180,9 @@ export default function Home() {
                   }}
                 />
                 <div className="relative">
-                  <TextGenerateEffect
-                    words="You Still Have a Lot of Time"
-                    className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight sm:leading-tight md:leading-snug lg:leading-snug tracking-tight bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 bg-clip-text text-transparent drop-shadow-lg"
-                    duration={0.025}
-                  />
+                  <h1 className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight sm:leading-tight md:leading-snug lg:leading-snug tracking-tight bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 bg-clip-text text-transparent drop-shadow-lg">
+                    You Still Have a Lot of Time
+                  </h1>
                 </div>
               </div>
 
@@ -253,113 +241,8 @@ export default function Home() {
             animate="visible"
             className="flex justify-center w-full"
           >
-            <div className="relative">
-              {/* Glow Background Effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-indigo-600/20 rounded-2xl blur-2xl opacity-0 pointer-events-none"
-                animate={{
-                  opacity: [0, 0.4, 0],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: [0.42, 0, 0.58, 1],
-                }}
-              />
-
-              {/* Tab Container with Glass Morphism */}
-              <motion.div
-                className="relative inline-flex gap-1 sm:gap-2 rounded-2xl border border-violet-500/30 bg-slate-900/40 p-1.5 sm:p-2 backdrop-blur-xl shadow-2xl hover:border-violet-400/50 transition-colors duration-300"
-                whileHover={{
-                  boxShadow:
-                    "0 20px 25px -5px rgb(167, 139, 250, 0.15), 0 0 20px rgba(167, 139, 250, 0.1)",
-                }}
-              >
-                {tabs.map((tab) => (
-                  <motion.button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="relative flex items-center justify-center gap-2 rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold outline-none cursor-pointer"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {/* Active Tab: Animated Gradient Background */}
-                    {activeTab === tab.id && (
-                      <>
-                        <motion.div
-                          layoutId="activeTabBg"
-                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-violet-600 via-violet-500 to-indigo-600"
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 25,
-                          }}
-                        />
-
-                        {/* Shimmer Effect on Active Tab */}
-                        <motion.div
-                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/15 to-transparent"
-                          animate={{
-                            x: ["-100%", "100%"],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: [0.42, 0, 0.58, 1],
-                          }}
-                        />
-
-                        {/* Glow Pulse */}
-                        <motion.div
-                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-violet-400/30 to-indigo-400/30 blur-md opacity-0"
-                          animate={{
-                            opacity: [0.3, 0.5, 0.3],
-                          }}
-                          transition={{
-                            duration: 2.5,
-                            repeat: Infinity,
-                            ease: [0.42, 0, 0.58, 1],
-                          }}
-                        />
-                      </>
-                    )}
-
-                    {/* Tab Content */}
-                    <motion.div
-                      className={`relative z-10 flex items-center gap-2 transition-all duration-200 ${
-                        activeTab === tab.id
-                          ? "text-white"
-                          : "text-slate-300 hover:text-slate-100"
-                      }`}
-                    >
-                      <motion.span
-                        animate={{
-                          scale: activeTab === tab.id ? 1.2 : 1,
-                          rotate: activeTab === tab.id ? 8 : 0,
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 20,
-                        }}
-                      >
-                        {tab.icon}
-                      </motion.span>
-                      <span className="font-semibold">{tab.label}</span>
-                    </motion.div>
-
-                    {/* Inactive Tab Hover Indicator */}
-                    {activeTab !== tab.id && (
-                      <motion.div
-                        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-violet-400/40 via-violet-400/60 to-violet-400/40 rounded-full w-1/2 -translate-x-1/2"
-                        initial={{ opacity: 0, scaleX: 0 }}
-                        whileHover={{ opacity: 1, scaleX: 1 }}
-                        transition={{ duration: 0.2 }}
-                      />
-                    )}
-                  </motion.button>
-                ))}
-              </motion.div>
+            <div className="text-center">
+              <p className="text-slate-400 text-sm">Ready to study? Start below</p>
             </div>
           </motion.div>
 
@@ -374,43 +257,21 @@ export default function Home() {
 
           {/* ========== CONTENT AREA WITH SMOOTH TRANSITIONS ========== */}
           <motion.div className="relative z-10 w-full">
-            <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-              {/* Test Resources Sidebar - Always Visible */}
-              {activeTab === "notes" && (
-                <TestResourcesSidebar
-                  onSelectLink={(url, label) => {
-                    setSelectedTestUrl(url);
-                    // Trigger input population in Workspace via ref or event
-                  }}
-                  className="lg:sticky lg:top-8 h-fit"
-                />
-              )}
-
-              {/* Main Content Area */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -30 }}
-                  transition={{
-                    duration: 0.4,
-                    type: "tween",
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                >
-                  {activeTab === "notes" && (
-                    <Workspace
-                      onSourcesChange={setSourcesCount}
-                      initialLink={selectedTestUrl}
-                    />
-                  )}
-                  {activeTab === "report" && (
-                    <ReportTab sourcesCount={sourcesCount} />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -30 }}
+                transition={{
+                  duration: 0.4,
+                  type: "tween",
+                  ease: [0.4, 0, 0.2, 1],
+                }}
+              >
+                {activeTab === "notes" && <WorkspaceComplete />}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
 
           {/* Bottom Spacing for Better UX */}
